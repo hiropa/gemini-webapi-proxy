@@ -74,12 +74,12 @@ def _e(text: Any) -> str:
 
 
 STATE = {
-    "ok": "🟢 работает",
-    "idle": "⚪ не запущен",
-    "disabled": "⚫ выключен",
-    "needs_login": "🔴 нужен вход",
-    "logged_out": "🔴 разлогинен",
-    "error": "🟠 ошибка",
+    "ok": "🟢 working",
+    "idle": "⚪ not started",
+    "disabled": "⚫ disabled",
+    "needs_login": "🔴 login required",
+    "logged_out": "🔴 logged out",
+    "error": "🟠 error",
 }
 
 
@@ -96,15 +96,15 @@ def _rel(ts: Any) -> str:
     delta = ts - time.time()
     a = abs(delta)
     unit = (
-        f"{round(a)} с"
+        f"{round(a)}s"
         if a < 90
-        else f"{round(a / 60)} мин"
+        else f"{round(a / 60)}min"
         if a < 5400
-        else f"{round(a / 3600)} ч"
+        else f"{round(a / 3600)}h"
         if a < 129600
-        else f"{round(a / 86400)} д"
+        else f"{round(a / 86400)}d"
     )
-    return f"через {unit}" if delta >= 0 else f"{unit} назад"
+    return f"in {unit}" if delta >= 0 else f"{unit} ago"
 
 
 class TelegramBot:
@@ -226,11 +226,11 @@ class TelegramBot:
             await self.call(
                 "setMyCommands",
                 commands=[
-                    {"command": "status", "description": "Аккаунты и лимиты"},
-                    {"command": "accounts", "description": "Управление аккаунтами"},
-                    {"command": "stats", "description": "Запросы за 24 часа"},
-                    {"command": "events", "description": "Последние события"},
-                    {"command": "help", "description": "Что умеет бот"},
+                    {"command": "status", "description": "Accounts and limits"},
+                    {"command": "accounts", "description": "Manage accounts"},
+                    {"command": "stats", "description": "Requests in the last 24 hours"},
+                    {"command": "events", "description": "Recent events"},
+                    {"command": "help", "description": "What the bot can do"},
                 ],
             )
         except Exception as exc:
@@ -299,7 +299,7 @@ class TelegramBot:
         url = self.config.ui_url.strip()
         if not url.startswith("https://"):  # Telegram refuses plain-http / local links
             return None
-        return [[{"text": "Открыть админку", "url": url}]]
+        return [[{"text": "Open admin UI", "url": url}]]
 
     # ---- updates -----------------------------------------------------------
     def _is_admin(self, chat_id: Any) -> bool:
@@ -325,13 +325,11 @@ class TelegramBot:
                 self.save()
                 log.info("telegram: %s (%s) linked as admin", name, chat_id)
                 await self.send(
-                    chat_id, "Готово: вы администратор этого прокси. /help — что умеет бот."
+                    chat_id, "Done: you are an admin of this proxy. /help — what the bot can do."
                 )
                 return
         if not self._is_admin(chat_id):
-            await self.send(
-                chat_id, "Нет доступа. Администратор привязывает бота в админке прокси."
-            )
+            await self.send(chat_id, "No access. An admin links the bot in the proxy's admin UI.")
             return
         command = text.split()[0].split("@")[0].lower() if text else ""
         handler = {
@@ -343,7 +341,7 @@ class TelegramBot:
             "/events": self._events,
         }.get(command)
         if handler is None:
-            await self.send(chat_id, "Не знаю такой команды. /help")
+            await self.send(chat_id, "Unknown command. /help")
             return
         await handler(chat_id)
 
@@ -351,11 +349,11 @@ class TelegramBot:
         await self.send(
             chat_id,
             "<b>Gemini Proxy</b>\n"
-            "/status — аккаунты, лимиты, паузы\n"
-            "/accounts — включить/выключить, сбросить лимит, проверить\n"
-            "/stats — запросы за 24 часа\n"
-            "/events — последние события\n\n"
-            "Уведомления приходят сами: разлогин, abuse-флаг, лимиты, 429, все аккаунты недоступны.",
+            "/status — accounts, limits, cooldowns\n"
+            "/accounts — enable/disable, reset limit, check\n"
+            "/stats — requests in the last 24 hours\n"
+            "/events — recent events\n\n"
+            "Alerts arrive on their own: logout, abuse flag, limits, 429, all accounts down.",
             self._ui_button(),
         )
 
@@ -367,7 +365,7 @@ class TelegramBot:
         return pool
 
     def status_text(self) -> str:
-        lines = ["<b>Аккаунты</b>"]
+        lines = ["<b>Accounts</b>"]
         for slot in self._pool().ordered():
             r = slot.report()
             q = r.get("quota") or {}
@@ -378,14 +376,14 @@ class TelegramBot:
             lines.append(head)
             if r.get("email"):
                 lines.append(_e(r["email"]))
-            for key, name in (("current_5h", "5 ч"), ("weekly", "неделя")):
+            for key, name in (("current_5h", "5 h"), ("weekly", "week")):
                 u = usage.get(key)
                 if u and u.get("usage_percentage") is not None:
                     lines.append(
-                        f"{name}: {u['usage_percentage']}% · сброс {_rel(u.get('reset_at'))}"
+                        f"{name}: {u['usage_percentage']}% · reset {_rel(u.get('reset_at'))}"
                     )
             for model, until in (r.get("cooldowns") or {}).items():
-                lines.append(f"⏸ {_e(model)} до {_rel(until)}")
+                lines.append(f"⏸ {_e(model)} until {_rel(until)}")
             if r.get("error") and r["state"] != "ok":
                 lines.append(f"<i>{_e(r['error'][:200])}</i>")
         return "\n".join(lines)
@@ -400,11 +398,11 @@ class TelegramBot:
             rows.append(
                 [
                     {
-                        "text": f"{a.name}: {'выключить' if a.enabled else 'включить'}",
+                        "text": f"{a.name}: {'disable' if a.enabled else 'enable'}",
                         "callback_data": f"t:{a.id}",
                     },
-                    {"text": "сброс лимита", "callback_data": f"c:{a.id}"},
-                    {"text": "проверить", "callback_data": f"k:{a.id}"},
+                    {"text": "reset limit", "callback_data": f"c:{a.id}"},
+                    {"text": "check", "callback_data": f"k:{a.id}"},
                 ]
             )
         return rows
@@ -417,13 +415,13 @@ class TelegramBot:
 
         s = summary(journal.since(24 * 3600), hours=24)
         t = s["totals"]
-        p50 = f"{t['p50_ms'] / 1000:.0f} с" if t.get("p50_ms") else "—"
+        p50 = f"{t['p50_ms'] / 1000:.0f}s" if t.get("p50_ms") else "—"
         lines = [
-            "<b>За 24 часа</b>",
-            f"запросов: {t['requests']}, ошибок: {t['errors']} (лимит 429: {t['limited']})",
-            f"время ответа, медиана: {p50}",
+            "<b>Last 24 hours</b>",
+            f"requests: {t['requests']}, errors: {t['errors']} (429 limit: {t['limited']})",
+            f"response time, median: {p50}",
         ]
-        for title, key in (("Модели", "models"), ("Аккаунты", "accounts"), ("Клиенты", "keys")):
+        for title, key in (("Models", "models"), ("Accounts", "accounts"), ("Clients", "keys")):
             top = ", ".join(f"{_e(r['name'])} {r['requests']}" for r in s[key][:5])
             if top:
                 lines.append(f"{title}: {top}")
@@ -432,9 +430,9 @@ class TelegramBot:
     async def _events(self, chat_id: Any) -> None:
         last = list(events.recent)[-10:]
         if not last:
-            await self.send(chat_id, "Событий пока не было.")
+            await self.send(chat_id, "No events yet.")
             return
-        lines = ["<b>Последние события</b>"]
+        lines = ["<b>Recent events</b>"]
         for e in reversed(last):
             who = f" · {_e(e.account)}" if e.account else ""
             lines.append(f"{time.strftime('%d.%m %H:%M', time.localtime(e.ts))} {_e(e.title)}{who}")
@@ -443,14 +441,12 @@ class TelegramBot:
     async def _callback(self, query: dict) -> None:
         chat_id = ((query.get("message") or {}).get("chat") or {}).get("id")
         if not self._is_admin(chat_id):
-            await self.call(
-                "answerCallbackQuery", callback_query_id=query["id"], text="Нет доступа"
-            )
+            await self.call("answerCallbackQuery", callback_query_id=query["id"], text="No access")
             return
         action, _, account_id = (query.get("data") or "").partition(":")
         pool = self._pool()
         slot = pool.slots.get(account_id)
-        note = "Нет такого аккаунта"
+        note = "No such account"
         if slot is not None:
             from gemini_webapi_proxy.config import get_settings
 
@@ -460,13 +456,13 @@ class TelegramBot:
                 pool.sync()
                 if not slot.account.enabled:
                     await slot.close()
-                note = "Включён" if slot.account.enabled else "Выключен"
+                note = "Enabled" if slot.account.enabled else "Disabled"
             elif action == "c":
                 slot.cooldowns.clear()
-                note = "Лимиты сброшены"
+                note = "Limits reset"
             elif action == "k":
                 await self.call(
-                    "answerCallbackQuery", callback_query_id=query["id"], text="Проверяю…"
+                    "answerCallbackQuery", callback_query_id=query["id"], text="Checking…"
                 )
                 await pool.drop(account_id)
                 await slot.ensure(get_settings())

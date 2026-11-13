@@ -160,11 +160,11 @@ computer itself is `http://host.docker.internal:<port>` for an account.
 Then, on any system:
 
 1. Open `http://127.0.0.1:4982/admin/ui` and sign in with the printed password
-   (`GOP_ADMIN_PASSWORD` in `.env`). The UI is in Russian.
-2. Press **Войти** on the `default` account and sign in to Google in the browser shown on
-   the page; add more accounts with **+ Аккаунт**, set a proxy per account in its card.
+   (`GOP_ADMIN_PASSWORD` in `.env`). The UI is in English.
+2. Press **Sign in** on the `default` account and sign in to Google in the browser shown on
+   the page; add more accounts with **+ Account**, set a proxy per account in its card.
 3. Point OpenAI clients at `http://127.0.0.1:4982/openai/v1` with `Bearer <GOP_API_KEY>`
-   from `.env`, or create a named key per client in the **Ключи** tab.
+   from `.env`, or create a named key per client in the **Keys** tab.
 
 Manual setup with plain `docker compose`: create `.env` with `GOP_API_KEY=...` and
 `GOP_ADMIN_PASSWORD=...` (`.env.example` is for running from source, not for Docker), then

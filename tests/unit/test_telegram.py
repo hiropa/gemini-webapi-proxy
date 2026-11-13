@@ -97,7 +97,7 @@ async def test_linking_an_admin_with_a_one_time_code(tg):
         assert link["url"] == f"https://t.me/gop_test_bot?start={link['code']}"
 
         await bot._handle(_message(42, "/status"))  # not an admin yet
-        assert "Нет доступа" in tg.sent()[-1]["text"]
+        assert "No access" in tg.sent()[-1]["text"]
         await bot._handle(_message(42, f"/start {link['code']}"))
         assert bot.config.admins == {"42": "op"}
         await bot._handle(_message(43, f"/start {link['code']}", "other"))  # used up
@@ -110,7 +110,7 @@ async def test_linking_an_admin_with_a_one_time_code(tg):
         assert TOKEN not in json.dumps(bot.status())  # masked for the UI
 
         await bot._handle(_message(42, "/status"))
-        assert "Аккаунты" in tg.sent()[-1]["text"] and "default" in tg.sent()[-1]["text"]
+        assert "Accounts" in tg.sent()[-1]["text"] and "default" in tg.sent()[-1]["text"]
         await bot._handle(_message(42, "/accounts"))
         buttons = tg.sent()[-1]["reply_markup"]["inline_keyboard"]
         assert buttons[0][0]["callback_data"] == "t:default"
@@ -130,11 +130,11 @@ async def test_account_buttons_switch_the_account(tg):
         await bot._callback(query)
         assert pool_module.pool.slots["default"].account.enabled is False
         answers = [b for m, b in tg.calls if m == "answerCallbackQuery"]
-        assert answers[-1]["text"] == "Выключен"
+        assert answers[-1]["text"] == "Disabled"
         stranger = {"id": "q2", "data": "t:default", "message": {"chat": {"id": 99}}}
         await bot._callback(stranger)
         assert pool_module.pool.slots["default"].account.enabled is False
-        assert [b for m, b in tg.calls if m == "answerCallbackQuery"][-1]["text"] == "Нет доступа"
+        assert [b for m, b in tg.calls if m == "answerCallbackQuery"][-1]["text"] == "No access"
     finally:
         await bot.stop()
 

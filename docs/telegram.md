@@ -6,12 +6,12 @@ something needs attention. Set up in the admin UI, **Telegram** tab.
 ## Setup
 
 1. Create a bot with [@BotFather](https://t.me/BotFather) and paste its token into the
-   Telegram tab, then **Сохранить**. The proxy checks it (`getMe`) and starts polling.
-2. **Привязать администратора** gives a one-time link `https://t.me/<bot>?start=<code>`
+   Telegram tab, then **Save**. The proxy checks it (`getMe`) and starts polling.
+2. **Link an admin** gives a one-time link `https://t.me/<bot>?start=<code>`
    (valid 10 minutes). Open it in Telegram and press Start: that chat becomes an admin.
    Repeat for every admin; remove them in the same tab.
 3. Optional: the public `https://` address of the admin UI (messages get an
-   "Открыть админку" button), and a proxy for `api.telegram.org` if the server cannot
+   "Open admin UI" button), and a proxy for `api.telegram.org` if the server cannot
    reach it directly.
 
 Settings are kept in `<data_dir>/telegram.json` (mode 0600). Changing the token forgets

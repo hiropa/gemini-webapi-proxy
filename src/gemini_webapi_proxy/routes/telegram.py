@@ -93,9 +93,7 @@ async def telegram_test() -> dict:
     sent, failed = 0, []
     for chat_id in list(bot.config.admins):
         try:
-            await bot.send(
-                chat_id, "✅ Тестовое сообщение от Gemini Proxy. Уведомления будут приходить сюда."
-            )
+            await bot.send(chat_id, "✅ Test message from Gemini Proxy. Alerts will arrive here.")
             sent += 1
         except Exception as exc:
             failed.append(f"{chat_id}: {bot._safe(exc)[:120]}")

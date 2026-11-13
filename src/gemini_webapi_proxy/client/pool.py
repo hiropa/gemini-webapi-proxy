@@ -445,7 +445,7 @@ class AccountPool:
                 emit(
                     "quota",
                     slot.id,
-                    f"{key} до {time.strftime('%d.%m %H:%M UTC', time.gmtime(until))}",
+                    f"{key} until {time.strftime('%d.%m %H:%M UTC', time.gmtime(until))}",
                 )
                 logger.warning(
                     "account %s: limit for %s until %s, trying the next account",
