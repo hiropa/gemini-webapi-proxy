@@ -15,14 +15,16 @@ from dataclasses import dataclass, field
 
 log = logging.getLogger(__name__)
 
-# kind -> human title (Russian, as the UI)
+# kind -> human title (shown in the UI and the bot)
 KINDS = {
-    "logged_out": "Аккаунт разлогинен",
-    "abuse": "Abuse-флаг Google — аккаунт выключен",
-    "quota": "Лимит исчерпан",
-    "blocked": "Google ответил 429 (необычный трафик)",
-    "all_down": "Ни один аккаунт не может ответить",
-    "recovered": "Аккаунт снова работает",
+    "logged_out": "Account logged out",
+    "abuse": "Google abuse flag — account disabled",
+    "quota": "Quota exhausted",
+    "blocked": "Google answered 429 (unusual traffic)",
+    "all_down": "No account can serve the request",
+    "recovered": "Account working again",
+    "node_down": "Linked node unreachable",
+    "node_up": "Linked node back online",
 }
 THROTTLE = 30 * 60.0
 

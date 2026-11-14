@@ -86,8 +86,8 @@ for _ in $(seq 1 60); do
     fi
     echo "  OpenAI API: http://${host}:${port}/openai/v1   (Bearer: GOP_API_KEY from .env)"
     echo
-    echo "Next: open the admin UI, press \"Войти\" on the default account and sign in to Google"
-    echo "in the browser shown on the page. Add more accounts with \"+ Аккаунт\"."
+    echo "Next: open the admin UI, press \"Sign in\" on the default account and sign in to Google"
+    echo "in the browser shown on the page. Add more accounts with \"+ Account\"."
     if [[ -z "$desktop" && "${GOP_HOST:-127.0.0.1}" == "127.0.0.1" ]]; then
       echo
       echo "It listens on 127.0.0.1 only. From your computer:  ssh -N -L ${port}:127.0.0.1:${port} <server>"

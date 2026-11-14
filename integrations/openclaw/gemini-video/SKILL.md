@@ -1,6 +1,6 @@
 ---
 name: gemini-video
-description: Generate a short video (Veo, ~8 s, mp4) from a text prompt or animate an image, through our Gemini WebAPI proxy. Use when the user asks to make, generate or animate a video/clip/ролик/видео/анимацию, including "оживи эту картинку".
+description: Generate a short video (Veo, ~8 s, mp4) from a text prompt or animate an image, through our Gemini WebAPI proxy. Use when the user asks to make, generate or animate a video/clip/animation, including "animate this picture".
 metadata: { "openclaw": { "requires": { "bins": ["python3"], "env": ["GEMINI_PROXY_URL", "GEMINI_PROXY_KEY"] } } }
 ---
 

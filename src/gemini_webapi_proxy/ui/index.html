@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -228,10 +228,10 @@ dialog h3 { margin: 0 0 8px; font-size: 15px; }
 </head>
 <body>
 <div id="login-screen" class="card" hidden>
-  <h2>Gemini Proxy — вход</h2>
+  <h2>Gemini Proxy — sign in</h2>
   <form id="login-form" class="grid">
-    <input type="password" id="password" placeholder="Пароль (GOP_ADMIN_PASSWORD или API key)" autofocus>
-    <button class="primary">Войти</button>
+    <input type="password" id="password" placeholder="Password (GOP_ADMIN_PASSWORD or API key)" autofocus>
+    <button class="primary">Sign in</button>
   </form>
 </div>
 
@@ -240,9 +240,9 @@ dialog h3 { margin: 0 0 8px; font-size: 15px; }
     <div class="brand"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10Z" fill="var(--accent)"/></svg>Gemini Proxy</div>
     <nav id="nav"></nav>
     <div class="aside-foot">
-      <button class="ghost sm" id="theme-btn" title="Тема">◐</button>
+      <button class="ghost sm" id="theme-btn" title="Theme">◐</button>
       <span class="sp"></span>
-      <button class="ghost sm" id="logout-btn">Выйти</button>
+      <button class="ghost sm" id="logout-btn">Log out</button>
     </div>
   </aside>
   <main id="view"></main>
@@ -250,37 +250,37 @@ dialog h3 { margin: 0 0 8px; font-size: 15px; }
 
 <dialog id="signin" class="wide">
   <div class="row">
-    <h3 style="margin:0">Вход в Google: <span id="signin-name"></span></h3>
+    <h3 style="margin:0">Sign in to Google: <span id="signin-name"></span></h3>
     <span class="sp"></span>
-    <button id="signin-cancel">Отмена</button>
-    <button class="primary" id="signin-finish">Готово — забрать сессию</button>
+    <button id="signin-cancel">Cancel</button>
+    <button class="primary" id="signin-finish">Done — take the session</button>
   </div>
-  <p class="muted small">Войди в аккаунт в окне ниже, дождись открытия gemini.google.com и нажми «Готово».
-    Прокси заберёт сессию, а браузер её забудет — так её не будут ротировать двое.</p>
-  <iframe id="vnc" title="Браузер на сервере"></iframe>
+  <p class="muted small">Sign in to the account in the window below, wait for gemini.google.com to open, then press "Done".
+    The proxy takes the session and the browser forgets it — so the two never rotate it at once.</p>
+  <iframe id="vnc" title="Browser on the server"></iframe>
 </dialog>
 
 <dialog id="cookies-dlg">
-  <h3>Cookies для <span id="cookies-name"></span></h3>
-  <p class="muted small">Строка <code>__Secure-1PSID=…; __Secure-1PSIDTS=…; …</code> из браузера, где выполнен вход в gemini.google.com.
-    Сессия с другого устройства живёт меньше, чем созданная на сервере.</p>
+  <h3>Cookies for <span id="cookies-name"></span></h3>
+  <p class="muted small">The <code>__Secure-1PSID=…; __Secure-1PSIDTS=…; …</code> string from a browser signed in to gemini.google.com.
+    A session from another device lives shorter than one created on the server.</p>
   <form id="cookies-form" class="grid">
     <input id="cookies-input" placeholder="__Secure-1PSID=...; __Secure-1PSIDTS=...">
-    <div class="row"><span class="sp"></span><button type="button" data-close>Отмена</button><button class="primary">Сохранить</button></div>
+    <div class="row"><span class="sp"></span><button type="button" data-close>Cancel</button><button class="primary">Save</button></div>
   </form>
 </dialog>
 
 <dialog id="secret-dlg">
-  <h3>Ключ «<span id="secret-name"></span>» создан</h3>
-  <p class="small fg2">Скопируй сейчас — второй раз его не показать: прокси хранит только хеш.</p>
-  <div class="secret"><input id="secret-value" readonly><button class="primary" id="secret-copy">Копировать</button></div>
-  <div class="row sec"><span class="sp"></span><button data-close>Готово</button></div>
+  <h3>Key "<span id="secret-name"></span>" created</h3>
+  <p class="small fg2">Copy it now — it will not be shown a second time: the proxy stores only the hash.</p>
+  <div class="secret"><input id="secret-value" readonly><button class="primary" id="secret-copy">Copy</button></div>
+  <div class="row sec"><span class="sp"></span><button data-close>Done</button></div>
 </dialog>
 
 <dialog id="lightbox" class="wide lightbox">
   <div class="row" style="margin-bottom:10px"><span id="lb-meta" class="small fg2"></span><span class="sp"></span>
-    <a id="lb-open" target="_blank" rel="noopener"><button class="sm">Открыть</button></a>
-    <button class="sm danger" id="lb-delete">Удалить</button><button class="sm" data-close>Закрыть</button></div>
+    <a id="lb-open" target="_blank" rel="noopener"><button class="sm">Open</button></a>
+    <button class="sm danger" id="lb-delete">Delete</button><button class="sm" data-close>Close</button></div>
   <img id="lb-img" alt="">
   <p id="lb-prompt" class="small fg2" style="white-space:pre-wrap"></p>
 </dialog>
@@ -305,15 +305,15 @@ const ICON = {
   system: '<path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4L10.6 6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4ZM13 15.5A3.5 3.5 0 1 1 16.5 12 3.5 3.5 0 0 1 13 15.5Z" transform="translate(-1 0)"/>',
 };
 const TABS = [
-  ["overview", "Обзор"], ["accounts", "Аккаунты"], ["requests", "Запросы"], ["keys", "Ключи"],
-  ["models", "Модели"], ["playground", "Песочница"], ["media", "Медиа"], ["telegram", "Telegram"], ["system", "Система"],
+  ["overview", "Overview"], ["accounts", "Accounts"], ["nodes", "Nodes"], ["requests", "Requests"], ["keys", "Keys"],
+  ["models", "Models"], ["playground", "Playground"], ["media", "Media"], ["telegram", "Telegram"], ["system", "System"],
 ];
 const ACC_STATE = {
-  ok: ["работает", "good"], idle: ["не запущен", ""], disabled: ["выключен", ""],
-  needs_login: ["нужен вход", "critical"], logged_out: ["разлогинен", "critical"], error: ["ошибка", "serious"],
+  ok: ["working", "good"], idle: ["not started", ""], disabled: ["disabled", ""],
+  needs_login: ["login required", "critical"], logged_out: ["logged out", "critical"], error: ["error", "serious"],
 };
-const ENDPOINT = { chat: "чат", image: "картинка", edit: "правка", video: "видео", "video-job": "видео (задача)",
-  "playground-chat": "песочница", "playground-image": "песочница · картинка" };
+const ENDPOINT = { chat: "chat", image: "image", edit: "edit", video: "video", "video-job": "video (job)",
+  "playground-chat": "playground", "playground-image": "playground · image" };
 
 let accountsData = { accounts: [] }, busy = false, cookiesFor = null, signinFor = null, current = null, lightboxName = null;
 const state = { hours: 24, filters: {}, open: null, pg: { mode: "chat", model: "gemini-flash", account: "", prompt: "" } };
@@ -326,26 +326,26 @@ function toast(msg) {
 async function api(method, path, body) {
   const r = await fetch(path, { method, credentials: "same-origin",
     headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
-  if (r.status === 401) { showLogin(); throw new Error("Нужен вход"); }
+  if (r.status === 401) { showLogin(); throw new Error("Sign in required"); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.detail || (j.error && j.error.message) || r.statusText);
   return j;
 }
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const num = (n) => (n ?? 0).toLocaleString("ru-RU");
-const ms = (v) => v == null ? "—" : v < 1000 ? `${Math.round(v)} мс` : `${(v / 1000).toFixed(v < 10000 ? 1 : 0)} с`;
-const bytes = (b) => b == null ? "—" : b > 1e9 ? `${(b / 1e9).toFixed(1)} ГБ` : b > 1e6 ? `${(b / 1e6).toFixed(1)} МБ` : `${Math.round(b / 1e3)} КБ`;
+const num = (n) => (n ?? 0).toLocaleString("en-US");
+const ms = (v) => v == null ? "—" : v < 1000 ? `${Math.round(v)}ms` : `${(v / 1000).toFixed(v < 10000 ? 1 : 0)}s`;
+const bytes = (b) => b == null ? "—" : b > 1e9 ? `${(b / 1e9).toFixed(1)}GB` : b > 1e6 ? `${(b / 1e6).toFixed(1)}MB` : `${Math.round(b / 1e3)}KB`;
 function rel(ts) {
   if (!ts) return "—";
   const d = typeof ts === "number" ? ts * 1000 : Date.parse(ts);
   const diff = (d - Date.now()) / 1000, a = Math.abs(diff);
-  const r = a < 60 ? `${Math.round(a)} с` : a < 5400 ? `${Math.round(a / 60)} мин` : a < 129600 ? `${Math.round(a / 3600)} ч` : `${Math.round(a / 86400)} д`;
-  return diff >= 0 ? `через ${r}` : `${r} назад`;
+  const r = a < 60 ? `${Math.round(a)}s` : a < 5400 ? `${Math.round(a / 60)}min` : a < 129600 ? `${Math.round(a / 3600)}h` : `${Math.round(a / 86400)}d`;
+  return diff >= 0 ? `in ${r}` : `${r} ago`;
 }
 function clock(ts, withDate) {
   if (!ts) return "—";
   const d = new Date(typeof ts === "number" ? ts * 1000 : ts);
-  return d.toLocaleString("ru-RU", withDate ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
+  return d.toLocaleString("en-US", withDate ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
     : { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 const when = (ts) => ts ? `${clock(ts, true)} · ${rel(ts)}` : "—";
@@ -406,7 +406,7 @@ function hourlyChart(buckets, hours) {
   bars.forEach((b, i) => {
     const x = left + i * step + (step - bw) / 2, total = b.ok + b.error;
     const label = hours > 48 ? clock(b.ts, true) : clock(b.ts, false).slice(0, 5);
-    const tipText = `<b>${esc(clock(b.ts, true))}–${esc(clock(b.end, false).slice(0, 5))}</b><br>успешно: ${num(b.ok)}<br>ошибок: ${num(b.error)}`;
+    const tipText = `<b>${esc(clock(b.ts, true))}–${esc(clock(b.end, false).slice(0, 5))}</b><br>ok: ${num(b.ok)}<br>errors: ${num(b.error)}`;
     let segs = "";
     if (total) {
       // ok at the bottom, errors on top; 2px surface gap between, rounded data end only.
@@ -417,8 +417,8 @@ function hourlyChart(buckets, hours) {
     g += `<rect class="hit" x="${left + i * step}" y="${top}" width="${step}" height="${plotH}" data-tip="${esc(tipText)}"/>${segs}`;
     if (i % labelEvery === 0) g += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(label)}</text>`;
   });
-  return `<div class="legend"><span><i style="background:var(--good)"></i>успешно</span><span><i style="background:var(--critical)"></i>ошибки</span></div>
-    <div class="chart"><svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Запросы по времени">${g}</svg></div>`;
+  return `<div class="legend"><span><i style="background:var(--good)"></i>ok</span><span><i style="background:var(--critical)"></i>errors</span></div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="Requests over time">${g}</svg></div>`;
 }
 function roundedTop(x, yTop, w, h, round, fill) {
   if (h <= 0) return "";
@@ -427,31 +427,31 @@ function roundedTop(x, yTop, w, h, round, fill) {
   return `<path d="${d}" fill="${fill}" style="pointer-events:none"/>`;
 }
 function hbars(rows, total) {
-  if (!rows.length) return `<div class="empty">Пока пусто</div>`;
+  if (!rows.length) return `<div class="empty">Nothing here yet</div>`;
   const max = Math.max(...rows.map((r) => r.requests));
   return `<div class="hbar">${rows.map((r) => `
     <div class="nowrap" style="overflow:hidden;text-overflow:ellipsis">${esc(r.name)}</div>
-    <div class="track" data-tip="<b>${esc(r.name)}</b><br>запросов: ${num(r.requests)}<br>ошибок: ${num(r.errors)}">
+    <div class="track" data-tip="<b>${esc(r.name)}</b><br>requests: ${num(r.requests)}<br>errors: ${num(r.errors)}">
       <div class="fill" style="width:${(r.requests / max) * 100}%"></div></div>
     <div class="num">${num(r.requests)}${r.errors ? ` <span class="small" style="color:var(--critical)">·${num(r.errors)}</span>` : ""}</div>`).join("")}</div>`;
 }
 function meter(pct, label, right) {
   const p = Math.max(0, Math.min(100, pct ?? 0)), cls = p >= 90 ? "critical" : p >= 70 ? "warning" : "";
-  return `<div>${esc(label)}</div><div class="meter ${cls}" data-tip="${esc(label)}: использовано ${p}%"><div style="width:${p}%"></div></div>
+  return `<div>${esc(label)}</div><div class="meter ${cls}" data-tip="${esc(label)}: used ${p}%"><div style="width:${p}%"></div></div>
     <div class="small fg2">${right}</div>`;
 }
 function quotaMeters(q) {
-  if (!q) return `<div class="muted small">Лимиты появятся после запуска клиента.</div>`;
+  if (!q) return `<div class="muted small">Limits appear once the client has started.</div>`;
   let rows = "";
   for (const m of q.models || []) {
     const used = m.usage_percentage ?? (m.total ? Math.round(100 - (m.remaining / m.total) * 100) : null);
-    rows += meter(used, m.label.replace(/ \[.*\]$/, ""), `${num(m.remaining)} / ${num(m.total)} · сброс ${rel(m.reset_at)}`);
+    rows += meter(used, m.label.replace(/ \[.*\]$/, ""), `${num(m.remaining)} / ${num(m.total)} · reset ${rel(m.reset_at)}`);
   }
-  for (const [k, name] of [["current_5h", "Окно 5 ч"], ["weekly", "Неделя"]]) {
+  for (const [k, name] of [["current_5h", "5 h window"], ["weekly", "Week"]]) {
     const u = (q.usage || {})[k];
-    if (u) rows += meter(u.usage_percentage, name, `${u.usage_percentage ?? "?"}% · сброс ${rel(u.reset_at)}`);
+    if (u) rows += meter(u.usage_percentage, name, `${u.usage_percentage ?? "?"}% · reset ${rel(u.reset_at)}`);
   }
-  return rows ? `<div class="meters">${rows}</div>` : `<div class="muted small">Google не сообщил лимиты.</div>`;
+  return rows ? `<div class="meters">${rows}</div>` : `<div class="muted small">Google did not report the limits.</div>`;
 }
 
 // ---- pages -----------------------------------------------------------------
@@ -463,30 +463,30 @@ PAGES.overview = async () => {
   const t = st.totals, okAcc = acc.accounts.filter((a) => a.state === "ok").length;
   const rate = t.requests ? Math.round((t.ok / t.requests) * 1000) / 10 : null;
   const recentErr = await api("GET", "/admin/requests?limit=6&outcome=error");
-  const periods = [[24, "24 ч"], [72, "3 дня"], [168, "7 дней"]];
-  view().innerHTML = head("Обзор", "", `<div class="seg">${periods.map(([h, l]) =>
+  const periods = [[24, "24 h"], [72, "3 d"], [168, "7 d"]];
+  view().innerHTML = head("Overview", "", `<div class="seg">${periods.map(([h, l]) =>
       `<button data-hours="${h}" class="${state.hours === h ? "on" : ""}">${l}</button>`).join("")}</div>`) + `
     <div class="tiles">
-      <div class="tile"><div class="label">Запросов</div><div class="value">${num(t.requests)}</div><div class="hint">за ${periods.find((p) => p[0] === state.hours)[1]}</div></div>
-      <div class="tile"><div class="label">Успешно</div><div class="value">${rate == null ? "—" : rate + "%"}</div><div class="hint">${num(t.ok)} из ${num(t.requests)}</div></div>
-      <div class="tile"><div class="label">Ошибок</div><div class="value">${num(t.errors)}</div><div class="hint">из них лимит (429): ${num(t.limited)}</div></div>
-      <div class="tile"><div class="label">Время ответа</div><div class="value">${ms(t.p50_ms)}</div><div class="hint">медиана · p95 ${ms(t.p95_ms)}</div></div>
-      <div class="tile"><div class="label">Аккаунты</div><div class="value">${okAcc} / ${acc.accounts.length}</div><div class="hint">${okAcc === acc.accounts.length ? "все работают" : "есть проблемы"}</div></div>
+      <div class="tile"><div class="label">Requests</div><div class="value">${num(t.requests)}</div><div class="hint">in ${periods.find((p) => p[0] === state.hours)[1]}</div></div>
+      <div class="tile"><div class="label">OK</div><div class="value">${rate == null ? "—" : rate + "%"}</div><div class="hint">${num(t.ok)} of ${num(t.requests)}</div></div>
+      <div class="tile"><div class="label">Errors</div><div class="value">${num(t.errors)}</div><div class="hint">of them 429 limit: ${num(t.limited)}</div></div>
+      <div class="tile"><div class="label">Response time</div><div class="value">${ms(t.p50_ms)}</div><div class="hint">median · p95 ${ms(t.p95_ms)}</div></div>
+      <div class="tile"><div class="label">Accounts</div><div class="value">${okAcc} / ${acc.accounts.length}</div><div class="hint">${okAcc === acc.accounts.length ? "all working" : "some have issues"}</div></div>
     </div>
-    <div class="card sec"><h2>Запросы по времени</h2>${hourlyChart(st.hourly, state.hours)}</div>
+    <div class="card sec"><h2>Requests over time</h2>${hourlyChart(st.hourly, state.hours)}</div>
     <div class="grid cols-2 sec">
-      <div class="card"><h2>Модели</h2>${hbars(st.models.slice(0, 8))}</div>
-      <div class="card"><h2>Клиенты (ключи)</h2>${hbars(st.keys.slice(0, 8))}</div>
+      <div class="card"><h2>Models</h2>${hbars(st.models.slice(0, 8))}</div>
+      <div class="card"><h2>Clients (keys)</h2>${hbars(st.keys.slice(0, 8))}</div>
     </div>
     <div class="grid cols-2 sec">
-      <div class="card"><h2>Лимиты аккаунтов</h2>${acc.accounts.map((a) => `
+      <div class="card"><h2>Account limits</h2>${acc.accounts.map((a) => `
         <div class="sec"><div class="row" style="margin-bottom:6px"><b>${esc(a.name)}</b>
           ${status(...(ACC_STATE[a.state] || [a.state, ""]))}<span class="muted small">${esc(a.quota?.tier || "")}</span></div>
-          ${quotaMeters(a.quota)}</div>`).join("") || `<div class="empty">Аккаунтов нет</div>`}</div>
-      <div class="card"><h2>Последние ошибки</h2>${recentErr.requests.length ? `<div class="grid" style="gap:10px">${recentErr.requests.map((r) => `
+          ${quotaMeters(a.quota)}</div>`).join("") || `<div class="empty">No accounts</div>`}</div>
+      <div class="card"><h2>Recent errors</h2>${recentErr.requests.length ? `<div class="grid" style="gap:10px">${recentErr.requests.map((r) => `
         <div><div class="row small">${okStatus(r.status)}<span class="fg2">${esc(ENDPOINT[r.endpoint] || r.endpoint)} · ${esc(r.model || "—")} · ${esc(r.account || "—")}</span>
           <span class="sp"></span><span class="muted">${rel(r.ts)}</span></div>
-          <div class="small err">${esc((r.error || "").slice(0, 220))}</div></div>`).join("")}</div>` : `<div class="empty">Ошибок нет</div>`}</div>
+          <div class="small err">${esc((r.error || "").slice(0, 220))}</div></div>`).join("")}</div>` : `<div class="empty">No errors</div>`}</div>
     </div>`;
   view().querySelectorAll("[data-hours]").forEach((b) => (b.onclick = () => { state.hours = +b.dataset.hours; render(); }));
 };
@@ -494,8 +494,8 @@ PAGES.overview = async () => {
 PAGES.accounts = async () => {
   accountsData = await api("GET", "/admin/accounts");
   const list = accountsData.accounts, ok = list.filter((a) => a.state === "ok").length;
-  view().innerHTML = head("Аккаунты", `${ok} из ${list.length} работают`, `<button class="primary" id="add-btn">+ Аккаунт</button>`) +
-    `<div class="grid">${list.map((a, i) => accountCard(a, i, list.length)).join("") || `<div class="card empty">Аккаунтов нет. Добавь первый.</div>`}</div>`;
+  view().innerHTML = head("Accounts", `${ok} of ${list.length} working`, `<button class="primary" id="add-btn">+ Account</button>`) +
+    `<div class="grid">${list.map((a, i) => accountCard(a, i, list.length)).join("") || `<div class="card empty">No accounts yet. Add the first one.</div>`}</div>`;
   $("#add-btn").onclick = addAccount;
 };
 function accountCard(a, i, n) {
@@ -507,41 +507,44 @@ function accountCard(a, i, n) {
       <span class="name">${esc(a.name)}</span><span class="muted small">${esc(a.email || a.id)}</span>
       ${status(label, cls)}
       ${q?.tier ? `<span class="chip">${esc(q.tier)}</span>` : ""}
-      ${abuse ? status("abuse-флаг", "critical") : ""}
-      ${a.source === "settings" ? `<span class="chip" title="Cookies берутся из GOP_COOKIE_SOURCE">из настроек</span>` : ""}
-      ${accountsData.signing_in === a.id ? status("идёт вход", "warning") : ""}
-      <span class="sp"></span><span class="muted small">приоритет ${a.priority}</span>
-      <button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Выше">↑</button>
-      <button class="sm" data-act="down" ${i === n - 1 ? "disabled" : ""} title="Ниже">↓</button>
+      ${abuse ? status("abuse flag", "critical") : ""}
+      ${a.source === "settings" ? `<span class="chip" title="Cookies come from GOP_COOKIE_SOURCE">from settings</span>` : ""}
+      ${accountsData.signing_in === a.id ? status("signing in", "warning") : ""}
+      ${a.remote ? `<span class="chip" title="This account lives on a linked node">via ${esc(a.remote.node)}</span>` : ""}
+      <span class="sp"></span><span class="muted small">priority ${a.priority}</span>
+      ${a.remote ? "" : `<button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Up">↑</button>
+      <button class="sm" data-act="down" ${i === n - 1 ? "disabled" : ""} title="Down">↓</button>`}
     </div>
-    <div class="acc-meta"><span>запросов: ${num(a.requests)}</span>${a.active ? `<span>сейчас в работе: ${a.active}</span>` : ""}
-      <span>последний: ${rel(a.last_used)}</span><span>вход: ${when(a.signed_in_at)}</span></div>
-    <div class="acc-meta">${egressLine(a)}</div>
+    <div class="acc-meta"><span>requests: ${num(a.requests)}</span>${a.active ? `<span>active now: ${a.active}</span>` : ""}
+      <span>last used: ${rel(a.last_used)}</span><span>signed in: ${when(a.signed_in_at)}</span></div>
+    ${a.remote ? `<div class="acc-meta"><span class="muted">egress: the node's own address (${esc(a.remote.url)})</span></div>` : `<div class="acc-meta">${egressLine(a)}</div>`}
     ${a.models.length ? `<div class="chips sec">${a.models.map((m) => `<span class="chip">${esc(m)}</span>`).join("")}</div>` : ""}
-    ${cds.length ? `<div class="sec row small">${status("лимит", "warning")}${cds.map(([k, t]) => `<span>${esc(k)} до ${esc(clock(t, true))} (${rel(t)})</span>`).join(" · ")}
-      <button class="sm" data-act="cooldowns">Сбросить</button></div>` : ""}
+    ${cds.length ? `<div class="sec row small">${status("cooldown", "warning")}${cds.map(([k, t]) => `<span>${esc(k)} until ${esc(clock(t, true))} (${rel(t)})</span>`).join(" · ")}
+      <button class="sm" data-act="cooldowns">Reset</button></div>` : ""}
     <div class="sec">${quotaMeters(q)}</div>
     ${a.error ? `<div class="err small sec">${esc(a.error)}</div>` : ""}
     <div class="acc-actions">
-      <button class="primary" data-act="signin">${a.state === "ok" ? "Перелогинить" : "Войти"}</button>
-      <button data-act="cookies">Вставить cookies</button>
-      <button data-act="proxy">Прокси…</button>
-      <button data-act="egress" title="Какой IP и страну видит Google">Проверить выход</button>
-      <button data-act="check" title="Переподключиться к Google и перечитать лимиты">Проверить</button>
-      <button data-act="toggle">${a.enabled ? "Выключить" : "Включить"}</button>
-      <button data-act="rename">Переименовать</button>
-      <button class="danger" data-act="delete">Удалить</button>
+      ${a.remote ? `<button class="primary" data-act="open-node">Sign in on ${esc(a.remote.node)}…</button>
+      <span class="muted small">managed on the node</span>` : `
+      <button class="primary" data-act="signin">${a.state === "ok" ? "Sign in again" : "Sign in"}</button>
+      <button data-act="cookies">Paste cookies</button>
+      <button data-act="proxy">Proxy…</button>
+      <button data-act="egress" title="Which IP and country Google sees">Check egress</button>
+      <button data-act="check" title="Reconnect to Google and re-read limits">Check</button>
+      <button data-act="toggle">${a.enabled ? "Disable" : "Enable"}</button>
+      <button data-act="rename">Rename</button>
+      <button class="danger" data-act="delete">Delete</button>`}
     </div></div>`;
 }
 
 function egressLine(a) {
-  const e = a.egress, via = a.proxy ? `через <span class="mono">${esc(a.proxy)}</span>` : "напрямую (IP сервера)";
-  if (!e) return `<span>выход: ${via}</span><span class="muted">не проверен</span>`;
-  if (e.error) return `<span>выход: ${via}</span>${status("прокси не отвечает", "critical")}<span class="err">${esc(e.error.slice(0, 120))}</span>`;
+  const e = a.egress, via = a.proxy ? `via <span class="mono">${esc(a.proxy)}</span>` : "direct (server IP)";
+  if (!e) return `<span>egress: ${via}</span><span class="muted">not checked</span>`;
+  if (e.error) return `<span>egress: ${via}</span>${status("proxy not responding", "critical")}<span class="err">${esc(e.error.slice(0, 120))}</span>`;
   const signedBefore = a.proxy_set_at && a.signed_in_at && a.signed_in_at < a.proxy_set_at;
-  return `<span>выход: <b>${esc([e.country, e.city].filter(Boolean).join(" · "))}</b> <span class="mono">${esc(e.ip)}</span></span>
-    <span class="muted">${esc(e.org || "")}</span><span>${via}</span><span class="muted">проверен ${rel(e.checked_at)}</span>${signedBefore ? status("войди заново через прокси", "warning") : ""}
-    ${e.gemini_blocked ? status(`Gemini: «необычный трафик» с ${e.gemini_seen_ip || "этого адреса"}`, "critical") : ""}`;
+  return `<span>egress: <b>${esc([e.country, e.city].filter(Boolean).join(" · "))}</b> <span class="mono">${esc(e.ip)}</span></span>
+    <span class="muted">${esc(e.org || "")}</span><span>${via}</span><span class="muted">checked ${rel(e.checked_at)}</span>${signedBefore ? status("sign in again via the proxy", "warning") : ""}
+    ${e.gemini_blocked ? status(`Gemini: "unusual traffic" from ${e.gemini_seen_ip || "this IP"}`, "critical") : ""}`;
 }
 
 PAGES.requests = async () => {
@@ -549,21 +552,21 @@ PAGES.requests = async () => {
     api("GET", "/admin/stats?hours=336"),
     api("GET", "/admin/requests?limit=300&" + new URLSearchParams(Object.entries(state.filters).filter(([, v]) => v))),
   ]);
-  const sel = (key, label, rows, names = {}) => `<select data-filter="${key}"><option value="">${label}: все</option>${rows.map((r) =>
+  const sel = (key, label, rows, names = {}) => `<select data-filter="${key}"><option value="">${label}: all</option>${rows.map((r) =>
     `<option value="${esc(r.name)}" ${state.filters[key] === r.name ? "selected" : ""}>${esc(names[r.name] || r.name)}</option>`).join("")}</select>`;
-  view().innerHTML = head("Запросы", "журнал без текстов промптов, только размеры") + `
+  view().innerHTML = head("Requests", "journal without prompt texts, sizes only") + `
     <div class="filters">
-      ${sel("endpoint", "Тип", st.endpoints, ENDPOINT)}${sel("model", "Модель", st.models)}
-      ${sel("account", "Аккаунт", st.accounts)}${sel("key", "Ключ", st.keys)}
-      <select data-filter="outcome"><option value="">Итог: все</option>
-        <option value="ok" ${state.filters.outcome === "ok" ? "selected" : ""}>успешно</option>
-        <option value="error" ${state.filters.outcome === "error" ? "selected" : ""}>ошибки</option></select>
-      ${Object.values(state.filters).some(Boolean) ? `<button class="sm ghost" id="clear-f">Сбросить</button>` : ""}
-      <span class="sp"></span><span class="muted small">${rq.requests.length} записей</span>
+      ${sel("endpoint", "Type", st.endpoints, ENDPOINT)}${sel("model", "Model", st.models)}
+      ${sel("account", "Account", st.accounts)}${sel("key", "Key", st.keys)}
+      <select data-filter="outcome"><option value="">Outcome: all</option>
+        <option value="ok" ${state.filters.outcome === "ok" ? "selected" : ""}>ok</option>
+        <option value="error" ${state.filters.outcome === "error" ? "selected" : ""}>errors</option></select>
+      ${Object.values(state.filters).some(Boolean) ? `<button class="sm ghost" id="clear-f">Reset</button>` : ""}
+      <span class="sp"></span><span class="muted small">${rq.requests.length} records</span>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Время</th><th>Тип</th><th>Модель</th><th>Аккаунт</th><th>Ключ</th><th>Итог</th><th style="text-align:right">Длит.</th><th style="text-align:right">Объём</th><th>Ошибка</th></tr></thead>
-      <tbody>${rq.requests.map((r, i) => requestRow(r, i)).join("") || `<tr><td colspan="9" class="empty">Записей нет</td></tr>`}</tbody>
+      <thead><tr><th>Time</th><th>Type</th><th>Model</th><th>Account</th><th>Key</th><th>Outcome</th><th style="text-align:right">Dur.</th><th style="text-align:right">Size</th><th>Error</th></tr></thead>
+      <tbody>${rq.requests.map((r, i) => requestRow(r, i)).join("") || `<tr><td colspan="9" class="empty">No records</td></tr>`}</tbody>
     </table></div>`;
   view().querySelectorAll("[data-filter]").forEach((s) => (s.onchange = () => { state.filters[s.dataset.filter] = s.value; render(); }));
   const c = $("#clear-f"); if (c) c.onclick = () => { state.filters = {}; render(); };
@@ -578,11 +581,11 @@ PAGES.requests = async () => {
 function requestRow(r, i) {
   const size = r.endpoint === "chat" || r.endpoint === "playground-chat"
     ? (r.prompt_chars != null ? `${num(r.prompt_chars)} → ${num(r.answer_chars)}` : "")
-    : r.images != null ? `${r.images} изобр.` : r.video ? "видео" : "";
-  const chain = (r.tried || []).length > 1 ? `<span class="muted" title="Переключения">${esc(r.tried.join(" → "))}</span>` : esc(r.account || "—");
-  const extra = [r.stream ? "stream" : "", r.tools ? `tools ${r.tools}` : "", r.tool_calls ? `вызовов ${r.tool_calls}` : ""].filter(Boolean);
+    : r.images != null ? `${r.images} images` : r.video ? "video" : "";
+  const chain = (r.tried || []).length > 1 ? `<span class="muted" title="Switchovers">${esc(r.tried.join(" → "))}</span>` : esc(r.account || "—");
+  const extra = [r.stream ? "stream" : "", r.tools ? `tools ${r.tools}` : "", r.tool_calls ? `calls ${r.tool_calls}` : ""].filter(Boolean);
   return `<tr class="clickable" data-i="${i}">
-    <td class="nowrap" title="${esc(new Date(r.ts * 1000).toLocaleString("ru-RU"))}">${esc(clock(r.ts, true))}</td>
+    <td class="nowrap" title="${esc(new Date(r.ts * 1000).toLocaleString("en-US"))}">${esc(clock(r.ts, true))}</td>
     <td class="nowrap">${esc(ENDPOINT[r.endpoint] || r.endpoint)}${extra.length ? ` <span class="muted small">${esc(extra.join(", "))}</span>` : ""}</td>
     <td class="nowrap">${esc(r.model || "—")}</td><td class="nowrap">${chain}</td><td class="nowrap">${esc(r.key || "—")}</td>
     <td>${okStatus(r.status)}</td><td class="num">${ms(r.ms)}</td><td class="num">${size}</td>
@@ -591,22 +594,22 @@ function requestRow(r, i) {
 
 PAGES.keys = async () => {
   const k = await api("GET", "/admin/keys");
-  view().innerHTML = head("Ключи", "отдельный ключ на клиента — видно, кто сколько тратит", `<button class="primary" id="new-key">+ Ключ</button>`) + `
+  view().innerHTML = head("Keys", "a separate key per client — see who spends what", `<button class="primary" id="new-key">+ Key</button>`) + `
     <div class="table-wrap"><table>
-      <thead><tr><th>Имя</th><th>Ключ</th><th>Создан</th><th style="text-align:right">Запросов</th><th>Последний</th><th>Статус</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Key</th><th>Created</th><th style="text-align:right">Requests</th><th>Last used</th><th>Status</th><th></th></tr></thead>
       <tbody>
-        <tr><td><b>master</b></td><td class="mono muted">GOP_API_KEY</td><td class="muted">из .env</td><td class="num">${num(k.master.requests)}</td>
-          <td class="nowrap">${rel(k.master.last_used)}</td><td>${k.master.set ? status("активен", "good") : status("не задан", "")}</td><td></td></tr>
+        <tr><td><b>master</b></td><td class="mono muted">GOP_API_KEY</td><td class="muted">from .env</td><td class="num">${num(k.master.requests)}</td>
+          <td class="nowrap">${rel(k.master.last_used)}</td><td>${k.master.set ? status("active", "good") : status("not set", "")}</td><td></td></tr>
         ${k.keys.map((x) => `<tr data-key="${esc(x.id)}">
           <td><b>${esc(x.name)}</b></td><td class="mono">${esc(x.prefix)}…</td><td class="nowrap">${esc(clock(x.created_at, true))}</td>
           <td class="num">${num(x.requests)}</td><td class="nowrap">${rel(x.last_used)}</td>
-          <td>${x.enabled ? status("активен", "good") : status("отключён", "")}</td>
-          <td class="nowrap"><button class="sm" data-kact="toggle">${x.enabled ? "Отключить" : "Включить"}</button>
-            <button class="sm" data-kact="rename">Переименовать</button><button class="sm danger" data-kact="delete">Удалить</button></td></tr>`).join("")}
+          <td>${x.enabled ? status("active", "good") : status("disabled", "")}</td>
+          <td class="nowrap"><button class="sm" data-kact="toggle">${x.enabled ? "Disable" : "Enable"}</button>
+            <button class="sm" data-kact="rename">Rename</button><button class="sm danger" data-kact="delete">Delete</button></td></tr>`).join("")}
       </tbody></table></div>
-    <p class="muted small sec">Клиент передаёт ключ как обычно: <code>Authorization: Bearer &lt;ключ&gt;</code>. Мастер-ключ продолжает работать.</p>`;
+    <p class="muted small sec">The client sends the key as usual: <code>Authorization: Bearer &lt;key&gt;</code>. The master key keeps working.</p>`;
   $("#new-key").onclick = () => {
-    const name = prompt("Имя клиента (например, openclaw)");
+    const name = prompt("Client name (e.g. openclaw)");
     if (name) act(async () => {
       const r = await api("POST", "/admin/keys", { name });
       $("#secret-name").textContent = r.name; $("#secret-value").value = r.secret; $("#secret-dlg").showModal();
@@ -615,8 +618,8 @@ PAGES.keys = async () => {
   view().querySelectorAll("[data-kact]").forEach((b) => (b.onclick = () => {
     const id = b.closest("tr").dataset.key, x = k.keys.find((y) => y.id === id);
     if (b.dataset.kact === "toggle") act(() => api("PATCH", `/admin/keys/${id}`, { enabled: !x.enabled }));
-    if (b.dataset.kact === "rename") { const n = prompt("Новое имя", x.name); if (n) act(() => api("PATCH", `/admin/keys/${id}`, { name: n })); }
-    if (b.dataset.kact === "delete" && confirm(`Удалить ключ «${x.name}»? Клиент с ним получит 403.`)) act(() => api("DELETE", `/admin/keys/${id}`), "Удалён");
+    if (b.dataset.kact === "rename") { const n = prompt("New name", x.name); if (n) act(() => api("PATCH", `/admin/keys/${id}`, { name: n })); }
+    if (b.dataset.kact === "delete" && confirm(`Delete key "${x.name}"? A client using it gets 403.`)) act(() => api("DELETE", `/admin/keys/${id}`), "Deleted");
   }));
 };
 
@@ -624,16 +627,16 @@ PAGES.models = async () => {
   const m = await api("GET", "/admin/models");
   const acc = (await api("GET", "/admin/accounts")).accounts;
   const name = (id) => (acc.find((a) => a.id === id) || {}).name || id;
-  view().innerHTML = head("Модели", "что доступно на каком аккаунте") + `
+  view().innerHTML = head("Models", "what is available on which account") + `
     <div class="table-wrap"><table>
-      <thead><tr><th>Модель</th><th>Назначение</th>${m.accounts.map((a) => `<th style="text-align:center">${esc(name(a))}</th>`).join("")}</tr></thead>
+      <thead><tr><th>Model</th><th>Assigned</th>${m.accounts.map((a) => `<th style="text-align:center">${esc(name(a))}</th>`).join("")}</tr></thead>
       <tbody>${m.models.map((x) => `<tr>
         <td><b class="mono">${esc(x.id)}</b><div class="small muted">${esc(x.name)}${x.aliases.length ? ` · → ${esc(x.aliases.join(", "))}` : ""}</div></td>
-        <td><div class="chips">${x.chat ? `<span class="chip">чат</span>` : ""}${x.image ? `<span class="chip">картинки</span>` : ""}</div></td>
-        ${m.accounts.map((a) => `<td style="text-align:center">${x.accounts[a] ? `<span class="yes" title="есть">✓</span>` : `<span class="no" title="нет">—</span>`}</td>`).join("")}
-      </tr>`).join("") || `<tr><td colspan="9" class="empty">Реестр пуст — запустите хотя бы один аккаунт</td></tr>`}</tbody>
+        <td><div class="chips">${x.chat ? `<span class="chip">chat</span>` : ""}${x.image ? `<span class="chip">images</span>` : ""}</div></td>
+        ${m.accounts.map((a) => `<td style="text-align:center">${x.accounts[a] ? `<span class="yes" title="yes">✓</span>` : `<span class="no" title="no">—</span>`}</td>`).join("")}
+      </tr>`).join("") || `<tr><td colspan="9" class="empty">Registry is empty — start at least one account</td></tr>`}</tbody>
     </table></div>
-    <p class="muted small sec">Алиасы <code>gemini-2.5-*-image</code> ведут на модели аккаунта. Запрос идёт на первый по приоритету аккаунт, у которого модель есть.</p>`;
+    <p class="muted small sec">Aliases <code>gemini-2.5-*-image</code> point to the account's models. A request goes to the first account that has the model.</p>`;
 };
 
 // ---- playground: chats kept in this browser (localStorage) ------------------
@@ -650,7 +653,7 @@ let pgStore = pgLoad(), pgBusy = false;
 function pgChat() {
   let c = pgStore.chats.find((x) => x.id === pgStore.current);
   if (!c) {
-    c = { id: Math.random().toString(36).slice(2, 10), title: "Новый чат", created: Date.now() / 1000, messages: [] };
+    c = { id: Math.random().toString(36).slice(2, 10), title: "New chat", created: Date.now() / 1000, messages: [] };
     pgStore.chats.unshift(c); pgStore.chats = pgStore.chats.slice(0, PG_MAX_CHATS); pgStore.current = c.id; pgSave();
   }
   return c;
@@ -658,28 +661,28 @@ function pgChat() {
 function pgMessage(m) {
   if (m.role === "user") {
     return `<div class="msg user"><div class="bubble">${esc(m.content)}</div>
-      <div class="meta">${esc({ chat: "", image: "картинка · ", video: "видео · " }[m.mode] || "")}${esc(m.model || "")}${m.account ? " · " + esc(m.account) : ""}</div></div>`;
+      <div class="meta">${esc({ chat: "", image: "image · ", video: "video · " }[m.mode] || "")}${esc(m.model || "")}${m.account ? " · " + esc(m.account) : ""}</div></div>`;
   }
   let body = "";
-  if (m.pending) body = `<span class="spinner"></span> <span class="muted" data-timer="${m.started}">${m.status || "думает"}…</span>`;
-  else if (m.error) body = `${status("ошибка", "critical")}<div class="err small" style="margin-top:6px">${esc(m.error)}</div>`;
+  if (m.pending) body = `<span class="spinner"></span> <span class="muted" data-timer="${m.started}">${m.status || "thinking"}…</span>`;
+  else if (m.error) body = `${status("error", "critical")}<div class="err small" style="margin-top:6px">${esc(m.error)}</div>`;
   else body = `<div class="md">${md(m.content || "")}</div>`;
   const media = (m.gallery || []).map((n) => `<img class="pg-img" src="/admin/gallery/${encodeURIComponent(n)}" alt="" data-gallery="${esc(n)}">`).join("") +
     (m.images || []).map((b) => `<img class="pg-img" src="data:image/jpeg;base64,${b}" alt="">`).join("") +
     (m.video && m.videoDone ? `<video controls preload="metadata" src="/admin/videos/${esc(m.video)}/content"></video>` : "");
-  const meta = m.pending ? "" : [m.account && `аккаунт ${m.account}`, m.tried && m.tried.length > 1 && `переключения ${m.tried.join(" → ")}`,
+  const meta = m.pending ? "" : [m.account && `account ${m.account}`, m.tried && m.tried.length > 1 && `switched ${m.tried.join(" → ")}`,
     m.ms != null && ms(m.ms)].filter(Boolean).join(" · ");
   return `<div class="msg bot"><div class="bubble">${body}${media}</div>${meta ? `<div class="meta">${esc(meta)}
-    ${!m.error && m.content ? ` · <a href="#" data-copy="${esc(m.content)}">копировать</a>` : ""}</div>` : ""}</div>`;
+    ${!m.error && m.content ? ` · <a href="#" data-copy="${esc(m.content)}">copy</a>` : ""}</div>` : ""}</div>`;
 }
 function pgRenderThread() {
   const c = pgChat(), box = $("#pg-thread");
   if (!box) return;
   box.innerHTML = c.messages.length ? c.messages.map(pgMessage).join("")
-    : `<div class="empty">Начни разговор. Чат помнит предыдущие сообщения этого диалога.<br><span class="small">Запросы тратят лимиты аккаунтов.</span></div>`;
+    : `<div class="empty">Start a conversation. The chat remembers the previous messages of this thread.<br><span class="small">Requests spend the accounts' limits.</span></div>`;
   box.scrollTop = box.scrollHeight;
   box.querySelectorAll("[data-copy]").forEach((a) => (a.onclick = async (e) => {
-    e.preventDefault(); try { await navigator.clipboard.writeText(a.dataset.copy); toast("Скопировано"); } catch {}
+    e.preventDefault(); try { await navigator.clipboard.writeText(a.dataset.copy); toast("Copied"); } catch {}
   }));
 }
 function pgRenderList() {
@@ -701,25 +704,25 @@ PAGES.playground = async () => {
   const pg = state.pg;
   const models = m.models.filter((x) => (pg.mode === "image" ? x.image : x.chat));
   if (!models.some((x) => x.id === pg.model)) pg.model = (models[0] || {}).id || "gemini-flash";
-  const hint = { chat: "Сообщение (Enter — отправить, Shift+Enter — новая строка)", image: "Что нарисовать", video: "Что снять (несколько минут, дневной лимит маленький)" };
-  view().innerHTML = head("Песочница", "запросы через пул — тратят лимиты аккаунтов") + `
+  const hint = { chat: "Message (Enter — send, Shift+Enter — new line)", image: "What to draw", video: "What to film (takes a few minutes, the daily limit is small)" };
+  view().innerHTML = head("Playground", "requests go through the pool — they spend account limits") + `
     <div class="pg">
       <div class="pg-side card">
-        <button class="primary" id="pg-new" style="width:100%">+ Новый чат</button>
+        <button class="primary" id="pg-new" style="width:100%">+ New chat</button>
         <div class="pg-list" id="pg-list"></div>
-        <button class="sm ghost danger" id="pg-del" style="width:100%">Удалить этот чат</button>
+        <button class="sm ghost danger" id="pg-del" style="width:100%">Delete this chat</button>
       </div>
       <div class="pg-main card">
         <div class="pg-thread" id="pg-thread"></div>
         <form class="pg-compose" id="pg-form">
           <div class="row">
-            <div class="seg">${["chat", "image", "video"].map((k) => `<button type="button" data-mode="${k}" class="${pg.mode === k ? "on" : ""}">${{ chat: "Чат", image: "Картинка", video: "Видео" }[k]}</button>`).join("")}</div>
+            <div class="seg">${["chat", "image", "video"].map((k) => `<button type="button" data-mode="${k}" class="${pg.mode === k ? "on" : ""}">${{ chat: "Chat", image: "Image", video: "Video" }[k]}</button>`).join("")}</div>
             <select id="pg-model">${models.map((x) => `<option ${x.id === pg.model ? "selected" : ""}>${esc(x.id)}</option>`).join("")}</select>
-            <select id="pg-account"><option value="">аккаунт: авто</option>${acc.accounts.map((a) =>
+            <select id="pg-account"><option value="">account: auto</option>${acc.accounts.map((a) =>
               `<option value="${esc(a.id)}" ${pg.account === a.id ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select>
           </div>
           <div class="pg-input"><textarea id="pg-prompt" rows="2" placeholder="${hint[pg.mode]}">${esc(pg.prompt)}</textarea>
-            <button class="primary" id="pg-send">Отправить</button></div>
+            <button class="primary" id="pg-send">Send</button></div>
         </form>
       </div>
     </div>`;
@@ -727,7 +730,7 @@ PAGES.playground = async () => {
   view().querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { pg.mode = b.dataset.mode; pg.prompt = $("#pg-prompt").value; render(); }));
   $("#pg-new").onclick = () => { if (pgBusy) return; pgStore.current = null; pgChat(); pgRenderList(); pgRenderThread(); };
   $("#pg-del").onclick = () => {
-    if (pgBusy || !confirm("Удалить этот чат из истории браузера?")) return;
+    if (pgBusy || !confirm("Delete this chat from the browser history?")) return;
     pgStore.chats = pgStore.chats.filter((c) => c.id !== pgStore.current); pgStore.current = (pgStore.chats[0] || {}).id || null;
     pgSave(); pgRenderList(); pgRenderThread();
   };
@@ -749,16 +752,16 @@ async function pgSend() {
   chat.messages.push({ role: "user", content: prompt, mode: pg.mode, model: pg.model, account: pg.account || "" });
   const reply = { role: "assistant", mode: pg.mode, pending: true, started: Date.now() };
   chat.messages.push(reply);
-  if (chat.title === "Новый чат") chat.title = prompt.slice(0, 48);
+  if (chat.title === "New chat") chat.title = prompt.slice(0, 48);
   Object.assign(chat, { model: pg.model, account: pg.account, updated: Date.now() / 1000 });
   $("#pg-prompt").value = ""; pgBusy = busy = true; $("#pg-send").disabled = true;
   pgSave(); pgRenderList(); pgRenderThread();
   const tick = setInterval(() => document.querySelectorAll("[data-timer]").forEach((el) =>
-    (el.textContent = `${el.textContent.split(" ·")[0].replace(/…$/, "")} · ${Math.round((Date.now() - +el.dataset.timer) / 1000)} с…`)), 1000);
+    (el.textContent = `${el.textContent.split(" ·")[0].replace(/…$/, "")} · ${Math.round((Date.now() - +el.dataset.timer) / 1000)}s…`)), 1000);
   try {
     const r = await api("POST", "/admin/playground", { mode: pg.mode, model: pg.model, account: pg.account || null, prompt, history });
     if (r.video) {
-      Object.assign(reply, { video: r.video.id, status: "видео в очереди", model: r.model });
+      Object.assign(reply, { video: r.video.id, status: "video queued", model: r.model });
       pgSave(); pgRenderThread();
       await followVideo(r.video.id, reply);
     } else {
@@ -776,14 +779,14 @@ async function pgSend() {
 
 async function followVideo(id, reply) {
   // Video jobs run in the background for minutes: poll the job and update the message.
-  const label = { queued: "видео в очереди", in_progress: "видео рендерится" };
+  const label = { queued: "video in queue", in_progress: "rendering video" };
   while (true) {
     let j;
     try { j = ((await api("GET", "/admin/videos")).videos || []).find((x) => x.id === id); } catch { j = null; }
-    if (!j) { Object.assign(reply, { pending: false, error: `Задача ${id} пропала` }); return; }
+    if (!j) { Object.assign(reply, { pending: false, error: `Job ${id} disappeared` }); return; }
     reply.account = j.account;
-    if (j.status === "completed") { Object.assign(reply, { pending: false, videoDone: j.has_file, content: j.has_file ? "" : "Файл не сохранился", ms: Date.now() - reply.started }); return; }
-    if (j.status === "failed") { Object.assign(reply, { pending: false, error: ((j.error && j.error.message) || "ошибка") + (j.error ? ` (${j.error.code})` : ""), ms: Date.now() - reply.started }); return; }
+    if (j.status === "completed") { Object.assign(reply, { pending: false, videoDone: j.has_file, content: j.has_file ? "" : "File was not saved", ms: Date.now() - reply.started }); return; }
+    if (j.status === "failed") { Object.assign(reply, { pending: false, error: ((j.error && j.error.message) || "error") + (j.error ? ` (${j.error.code})` : ""), ms: Date.now() - reply.started }); return; }
     reply.status = label[j.status] || j.status; pgSave();
     if ($("#pg-thread")) pgRenderThread();
     await new Promise((r) => setTimeout(r, 5000));
@@ -792,20 +795,20 @@ async function followVideo(id, reply) {
 
 PAGES.media = async () => {
   const [v, g] = await Promise.all([api("GET", "/admin/videos"), api("GET", "/admin/gallery")]);
-  const vstat = { completed: ["готово", "good"], failed: ["ошибка", "critical"], in_progress: ["рендерится", "warning"], queued: ["в очереди", ""] };
-  view().innerHTML = head("Медиа", "видео и картинки хранятся 24 ч") + `
-    <div class="card"><h2>Видео <span class="muted small">${v.videos.length}</span></h2>
+  const vstat = { completed: ["done", "good"], failed: ["error", "critical"], in_progress: ["rendering", "warning"], queued: ["queued", ""] };
+  view().innerHTML = head("Media", "videos and images are kept 24 h") + `
+    <div class="card"><h2>Videos <span class="muted small">${v.videos.length}</span></h2>
       ${v.videos.length ? `<div class="videos">${v.videos.map((j) => `<div>
         ${j.status === "completed" && j.has_file ? `<video controls preload="metadata" src="/admin/videos/${esc(j.id)}/content"></video>` : ""}
         <div class="row small sec">${status(...(vstat[j.status] || [j.status, ""]))}<span class="fg2">${esc(j.account || "")}</span>
           <span class="sp"></span><span class="muted">${rel(j.created_at)}</span></div>
         <div class="small fg2" style="margin-top:4px">${esc(j.prompt.slice(0, 200))}</div>
-        ${j.error ? `<div class="small err">${esc(j.error.message.slice(0, 200))}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">Видео нет</div>`}
+        ${j.error ? `<div class="small err">${esc(j.error.message.slice(0, 200))}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">No videos</div>`}
     </div>
-    <div class="card sec"><h2>Картинки <span class="muted small">${g.images.length}</span></h2>
+    <div class="card sec"><h2>Images <span class="muted small">${g.images.length}</span></h2>
       ${g.images.length ? `<div class="gallery">${g.images.map((im, i) => `<figure data-i="${i}">
         <img loading="lazy" src="/admin/gallery/${encodeURIComponent(im.name)}" alt="">
-        <figcaption title="${esc(im.prompt)}">${esc(im.prompt || im.name)}</figcaption></figure>`).join("")}</div>` : `<div class="empty">Картинок нет</div>`}
+        <figcaption title="${esc(im.prompt)}">${esc(im.prompt || im.name)}</figcaption></figure>`).join("")}</div>` : `<div class="empty">No images</div>`}
     </div>`;
   view().querySelectorAll(".gallery figure").forEach((f) => (f.onclick = () => {
     const im = g.images[+f.dataset.i], url = `/admin/gallery/${encodeURIComponent(im.name)}`;
@@ -818,44 +821,44 @@ PAGES.media = async () => {
 
 PAGES.telegram = async () => {
   const t = await api("GET", "/admin/telegram");
-  const state = t.running ? status(`работает: @${t.username}`, "good")
-    : t.token_set ? status(t.error ? "ошибка" : "не запущен", t.error ? "critical" : "") : status("не настроен", "");
+  const state = t.running ? status(`running: @${t.username}`, "good")
+    : t.token_set ? status(t.error ? "error" : "not started", t.error ? "critical" : "") : status("not configured", "");
   const uiDefault = location.origin + "/admin/ui";
-  view().innerHTML = head("Telegram", "бот для статуса, управления аккаунтами и уведомлений") + `
+  view().innerHTML = head("Telegram", "bot for status, account control and alerts") + `
     <div class="grid cols-2" style="align-items:start">
-      <div class="card"><h2>Бот ${state}</h2>
+      <div class="card"><h2>Bot ${state}</h2>
         <form id="tg-form" class="grid" style="gap:10px">
-          <label class="small muted">Токен от @BotFather ${t.token_set ? `(сейчас ${esc(t.token)})` : ""}</label>
-          <input id="tg-token" type="password" autocomplete="off" placeholder="${t.token_set ? "оставь пустым, чтобы не менять" : "123456789:AA..."}">
-          <label class="small muted">Адрес админки для кнопки в сообщениях (только https)</label>
+          <label class="small muted">Token from @BotFather ${t.token_set ? `(current: ${esc(t.token)})` : ""}</label>
+          <input id="tg-token" type="password" autocomplete="off" placeholder="${t.token_set ? "leave empty to keep it unchanged" : "123456789:AA..."}">
+          <label class="small muted">Admin UI address for the buttons in messages (https only)</label>
           <input id="tg-url" value="${esc(t.ui_url || (location.protocol === "https:" ? uiDefault : ""))}" placeholder="https://.../admin/ui">
-          <label class="small muted">Прокси до api.telegram.org (если напрямую недоступен)</label>
-          <input id="tg-proxy" value="${esc(t.proxy || "")}" placeholder="http://host:port или socks5://host:port — пусто: напрямую">
-          <label class="row small"><input type="checkbox" id="tg-enabled" ${t.enabled ? "checked" : ""}> бот включён</label>
-          <div class="row"><button class="primary">Сохранить и перезапустить</button>
-            ${t.token_set ? `<button type="button" class="danger" id="tg-remove">Отключить бота</button>` : ""}</div>
+          <label class="small muted">Proxy for api.telegram.org (if not reachable directly)</label>
+          <input id="tg-proxy" value="${esc(t.proxy || "")}" placeholder="http://host:port or socks5://host:port — empty: direct">
+          <label class="row small"><input type="checkbox" id="tg-enabled" ${t.enabled ? "checked" : ""}> bot enabled</label>
+          <div class="row"><button class="primary">Save and restart</button>
+            ${t.token_set ? `<button type="button" class="danger" id="tg-remove">Disable bot</button>` : ""}</div>
         </form>
         ${t.error ? `<div class="err small sec">${esc(t.error)}</div>` : ""}
       </div>
-      <div class="card"><h2>Администраторы</h2>
+      <div class="card"><h2>Admins</h2>
         ${Object.keys(t.admins).length ? `<div class="grid" style="gap:6px">${Object.entries(t.admins).map(([id, name]) => `
           <div class="row"><b>${esc(name)}</b><span class="muted small mono">${esc(id)}</span><span class="sp"></span>
-          <button class="sm danger" data-unlink="${esc(id)}">Отвязать</button></div>`).join("")}</div>` : `<div class="muted small">Пока никого. Привяжи себя — бот будет присылать уведомления.</div>`}
-        <div class="sec row"><button id="tg-link" ${t.running ? "" : "disabled"}>Привязать администратора</button>
-          <button id="tg-test" ${t.running && Object.keys(t.admins).length ? "" : "disabled"}>Отправить тест</button></div>
+          <button class="sm danger" data-unlink="${esc(id)}">Unlink</button></div>`).join("")}</div>` : `<div class="muted small">Nobody yet. Link yourself — the bot will send alerts.</div>`}
+        <div class="sec row"><button id="tg-link" ${t.running ? "" : "disabled"}>Link an admin</button>
+          <button id="tg-test" ${t.running && Object.keys(t.admins).length ? "" : "disabled"}>Send test</button></div>
         <div id="tg-link-box" class="sec small"></div>
       </div>
-      <div class="card"><h2>Уведомления</h2>
+      <div class="card"><h2>Alerts</h2>
         <div class="grid" style="gap:6px">${Object.entries(t.kinds).map(([k, title]) => `
           <label class="row small"><input type="checkbox" data-kind="${esc(k)}" ${t.notify.includes(k) ? "checked" : ""}> ${esc(title)}</label>`).join("")}</div>
-        <p class="muted small">Одно и то же событие по одному аккаунту — не чаще раза в 30 минут.</p>
-        <button id="tg-notify">Сохранить</button>
+        <p class="muted small">The same event for the same account — at most once every 30 minutes.</p>
+        <button id="tg-notify">Save</button>
       </div>
-      <div class="card"><h2>Последние события</h2>
+      <div class="card"><h2>Recent events</h2>
         ${t.events.length ? `<div class="grid" style="gap:8px">${t.events.map((e) => `<div class="small">
           <div class="row">${status(e.title, e.kind === "recovered" ? "good" : e.kind === "quota" ? "warning" : "critical")}
             ${e.account ? `<b>${esc(e.account)}</b>` : ""}<span class="sp"></span><span class="muted">${rel(e.ts)}</span></div>
-          ${e.text ? `<div class="fg2">${esc(e.text)}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">Событий пока не было</div>`}
+          ${e.text ? `<div class="fg2">${esc(e.text)}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">No events yet</div>`}
       </div>
     </div>`;
   $("#tg-form").onsubmit = (e) => {
@@ -863,49 +866,94 @@ PAGES.telegram = async () => {
     const body = { ui_url: $("#tg-url").value.trim(), proxy: $("#tg-proxy").value.trim(), enabled: $("#tg-enabled").checked };
     const token = $("#tg-token").value.trim();
     if (token) body.token = token;
-    act(() => api("POST", "/admin/telegram", body), "Сохранено");
+    act(() => api("POST", "/admin/telegram", body), "Saved");
   };
   const rm = $("#tg-remove");
-  if (rm) rm.onclick = () => { if (confirm("Отключить бота и забыть токен и администраторов?")) act(() => api("POST", "/admin/telegram", { token: "" }), "Бот отключён"); };
+  if (rm) rm.onclick = () => { if (confirm("Disable the bot and forget the token and admins?")) act(() => api("POST", "/admin/telegram", { token: "" }), "Bot disabled"); };
   $("#tg-notify").onclick = () => act(() => api("POST", "/admin/telegram",
-    { notify: [...view().querySelectorAll("[data-kind]")].filter((c) => c.checked).map((c) => c.dataset.kind) }), "Сохранено");
+    { notify: [...view().querySelectorAll("[data-kind]")].filter((c) => c.checked).map((c) => c.dataset.kind) }), "Saved");
   view().querySelectorAll("[data-unlink]").forEach((b) => (b.onclick = () =>
-    confirm("Отвязать администратора?") && act(() => api("DELETE", `/admin/telegram/admins/${encodeURIComponent(b.dataset.unlink)}`))));
+    confirm("Unlink the admin?") && act(() => api("DELETE", `/admin/telegram/admins/${encodeURIComponent(b.dataset.unlink)}`))));
   $("#tg-link").onclick = async () => {
     try {
       const l = await api("POST", "/admin/telegram/link");
-      $("#tg-link-box").innerHTML = `Открой ссылку в Telegram и нажми «Start» — в течение 10 минут:<br>
+      $("#tg-link-box").innerHTML = `Open the link in Telegram and press "Start" — valid for 10 minutes:<br>
         <a href="${esc(l.url)}" target="_blank" rel="noopener"><b>${esc(l.url)}</b></a><br>
-        <span class="muted">или отправь боту: <code>/start ${esc(l.code)}</code>. Потом обнови страницу.</span>`;
+        <span class="muted">or send the bot: <code>/start ${esc(l.code)}</code>. Then refresh the page.</span>`;
     } catch (e) { toast(e.message); }
   };
   $("#tg-test").onclick = async () => {
-    try { const r = await api("POST", "/admin/telegram/test"); toast(r.failed.length ? `Не ушло: ${r.failed.join("; ")}` : `Отправлено: ${r.sent}`); }
+    try { const r = await api("POST", "/admin/telegram/test"); toast(r.failed.length ? `Failed: ${r.failed.join("; ")}` : `Sent: ${r.sent}`); }
     catch (e) { toast(e.message); }
   };
 };
 
+PAGES.nodes = async () => {
+  const n = await api("GET", "/admin/nodes");
+  view().innerHTML = head("Nodes", "linked machines (slaves) whose accounts this proxy can use like local ones") + `
+    <div class="card sec"><h2>Link a node</h2>
+      <form id="node-form" class="grid" style="gap:10px">
+        <label class="small muted">Name</label><input id="nd-name" placeholder="slave-1">
+        <label class="small muted">URL of the other proxy</label><input id="nd-url" placeholder="https://slave.example.com:4982">
+        <label class="small muted">Its node token (on the slave: GOP_NODE_TOKEN, or regenerate it in its admin UI)</label>
+        <input id="nd-token" type="password" autocomplete="off" placeholder="gop-node-…">
+        <div class="row"><button class="primary">Link node</button>
+          <span class="muted small">The slave's <code>/node</code> API must be reachable from here — use https or an SSH tunnel. Its accounts then appear on the Accounts tab as <i>node/account</i>.</span></div>
+      </form></div>
+    ${n.nodes.map((x) => `<div class="card sec" data-id="${esc(x.id)}">
+      <div class="acc-head"><span class="name">${esc(x.name)}</span>
+        ${x.online ? status("online", "good") : status(x.enabled ? "unreachable" : "disabled", x.enabled ? "critical" : "")}
+        <span class="muted small mono">${esc(x.url)}</span>
+        <span class="sp"></span><span class="muted small">priority ${x.priority} · ${x.accounts.length} account(s) · ${x.last_ok ? "seen " + rel(x.last_ok) : "never reached"}</span></div>
+      ${x.error ? `<div class="err small sec">${esc(x.error)}</div>` : ""}
+      ${x.accounts.length ? `<div class="chips sec">${x.accounts.map((a) => `<span class="chip">${esc(a.name || a.id)} · ${esc(a.state || "?")}</span>`).join("")}</div>` : ""}
+      <div class="acc-actions">
+        <button class="sm" data-nact="refresh">Refresh</button>
+        <button class="sm" data-nact="toggle">${x.enabled ? "Disable" : "Enable"}</button>
+        <button class="sm danger" data-nact="remove">Unlink</button>
+      </div></div>`).join("") || `<div class="card empty">No linked nodes yet.</div>`}`;
+  $("#node-form").onsubmit = (e) => {
+    e.preventDefault();
+    act(() => api("POST", "/admin/nodes", { name: $("#nd-name").value.trim(), url: $("#nd-url").value.trim(), token: $("#nd-token").value.trim() }), "Linked");
+  };
+  view().querySelectorAll("[data-nact]").forEach((b) => (b.onclick = () => {
+    const id = b.closest("[data-id]").dataset.id, x = n.nodes.find((y) => y.id === id);
+    if (b.dataset.nact === "refresh") return act(() => api("POST", `/admin/nodes/${id}/refresh`), "Refreshed");
+    if (b.dataset.nact === "toggle") return act(() => api("PATCH", `/admin/nodes/${id}`, { enabled: !x.enabled }));
+    if (b.dataset.nact === "remove" && confirm(`Unlink node "${x.name}"? Its accounts leave the pool here; they stay on the node.`))
+      return act(() => api("DELETE", `/admin/nodes/${id}`), "Unlinked");
+  }));
+};
+
 PAGES.system = async () => {
   const s = await api("GET", "/admin/system");
+  const nt = await api("GET", "/admin/node-token");
   const kv = (o) => `<dl class="kv">${Object.entries(o).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
-  const yn = (b) => (b ? status("да", "good") : status("нет", ""));
-  view().innerHTML = head("Система") + `<div class="grid cols-2">
-    <div class="card"><h2>Прокси</h2>${kv({ "версия": esc(s.version), "gemini-webapi": esc(s.gemini_webapi), "python": esc(s.python),
-      "запущен": esc(when(s.started_at)), "память": s.rss_mb ? `${s.rss_mb} МБ` : "—", "записей в журнале": num(s.journal_records) })}</div>
-    <div class="card"><h2>Браузер для входа</h2>${kv({
-      "DevTools (CDP)": s.browser.ok ? status("доступен", "good") : status("недоступен", "critical"),
-      "версия": esc(s.browser.version || s.browser.error || "—"),
-      "noVNC": s.vnc.ok ? status("доступен", "good") : status("недоступен", "critical"),
-      "адреса": `<span class="mono">${esc(s.settings.cdp_url)}<br>${esc(s.settings.vnc_url)}</span>` })}</div>
-    <div class="card"><h2>Хранилище</h2>${kv({ "каталог данных": `<span class="mono">${esc(s.settings.data_dir)}</span>`,
-      "свободно": s.disk ? `${bytes(s.disk.free)} из ${bytes(s.disk.total)} (${Math.round((s.disk.free / s.disk.total) * 100)}%)` : "—",
-      "картинки хранятся": `${s.settings.image_keep_hours} ч`, "видео хранятся": `${s.settings.video_keep_hours} ч` })}</div>
-    <div class="card"><h2>Настройки</h2>${kv({ "источник cookies (default)": esc(s.settings.cookie_source),
-      "API key задан": yn(s.settings.api_key), "отдельный пароль админки": yn(s.settings.admin_password),
-      "таймауты чат / картинка / видео": `${s.settings.chat_timeout} / ${s.settings.image_timeout} / ${s.settings.video_timeout} с`,
-      "пауза после лимита": `${s.settings.quota_cooldown / 60} мин (видео ${s.settings.video_cooldown / 3600} ч)`,
-      "на аккаунт одновременно": `${s.settings.account_concurrency}, пауза между стартами ${s.settings.account_min_interval} с` })}</div>
+  const yn = (b) => (b ? status("yes", "good") : status("no", ""));
+  view().innerHTML = head("System") + `<div class="grid cols-2">
+    <div class="card"><h2>Linked nodes (this instance as a slave)</h2>${kv({
+      "node token": nt.token_set ? `<span class="mono">${esc(nt.token)}</span> <span class="muted small">(set: ${esc(nt.token_set ? "GOP_NODE_TOKEN or data/node_token.txt" : "")})</span>` : "not set",
+    })}
+      <div class="row sec"><span class="muted small">Give this token to the master when linking this machine (Nodes tab there). The <code>/node</code> API is off without a token.</span>
+      <span class="sp"></span><button class="sm" id="nt-regen">Regenerate token</button></div></div>
+    <div class="card"><h2>Proxy</h2>${kv({ "version": esc(s.version), "gemini-webapi": esc(s.gemini_webapi), "python": esc(s.python),
+      "started": esc(when(s.started_at)), "memory": s.rss_mb ? `${s.rss_mb}MB` : "—", "journal records": num(s.journal_records) })}</div>
+    <div class="card"><h2>Sign-in browser</h2>${kv({
+      "DevTools (CDP)": s.browser.ok ? status("up", "good") : status("down", "critical"),
+      "version": esc(s.browser.version || s.browser.error || "—"),
+      "noVNC": s.vnc.ok ? status("up", "good") : status("down", "critical"),
+      "addresses": `<span class="mono">${esc(s.settings.cdp_url)}<br>${esc(s.settings.vnc_url)}</span>` })}</div>
+    <div class="card"><h2>Storage</h2>${kv({ "data dir": `<span class="mono">${esc(s.settings.data_dir)}</span>`,
+      "free": s.disk ? `${bytes(s.disk.free)} of ${bytes(s.disk.total)} (${Math.round((s.disk.free / s.disk.total) * 100)}%)` : "—",
+      "images kept": `${s.settings.image_keep_hours}h`, "videos kept": `${s.settings.video_keep_hours}h` })}</div>
+    <div class="card"><h2>Settings</h2>${kv({ "cookie source (default)": esc(s.settings.cookie_source),
+      "API key set": yn(s.settings.api_key), "separate admin password": yn(s.settings.admin_password),
+      "timeouts chat / image / video": `${s.settings.chat_timeout} / ${s.settings.image_timeout} / ${s.settings.video_timeout}s`,
+      "cooldown after limit": `${s.settings.quota_cooldown / 60} min (video ${s.settings.video_cooldown / 3600} h)`,
+      "per account at once": `${s.settings.account_concurrency}, pause between starts ${s.settings.account_min_interval}s` })}</div>
   </div>`;
+  const regen = $("#nt-regen");
+  if (regen) regen.onclick = () => { if (confirm("Regenerate the node token? Old links stop working immediately.")) act(async () => { const r = await api("POST", "/admin/node-token"); toast("New token: " + r.token); }); };
 };
 
 // ---- shell ---------------------------------------------------------------
@@ -921,7 +969,7 @@ async function render() {
   try {
     await PAGES[current]();
     showApp();
-  } catch (e) { if (e.message !== "Нужен вход") toast(e.message); }
+  } catch (e) { if (e.message !== "Sign in required") toast(e.message); }
   $("#nav").innerHTML = navHtml();
 }
 function showLogin() { $("#login-screen").hidden = false; $("#app").hidden = true; }
@@ -948,7 +996,7 @@ async function startSignin(a) {
   signinFor = a.id; $("#signin-name").textContent = a.name; $("#vnc").src = r.vnc; $("#signin").showModal();
 }
 function addAccount() {
-  const name = prompt("Имя аккаунта (например, «pro» или «free»)");
+  const name = prompt("Account name (e.g. \"pro\" or \"free\")");
   if (name) act(async () => { const a = await api("POST", "/admin/accounts", { name }); await startSignin(a); });
 }
 view().addEventListener("click", (ev) => {
@@ -958,26 +1006,27 @@ view().addEventListener("click", (ev) => {
   switch (btn.dataset.act) {
     case "up": return act(() => swap(id, -1));
     case "down": return act(() => swap(id, 1));
-    case "check": btn.disabled = true; btn.textContent = "Проверяю…"; return act(() => api("POST", `${path}/check`), "Проверено");
+    case "check": btn.disabled = true; btn.textContent = "Checking…"; return act(() => api("POST", `${path}/check`), "Checked");
     case "toggle": return act(() => api("PATCH", path, { enabled: !a.enabled }));
-    case "cooldowns": return act(() => api("DELETE", `${path}/cooldowns`), "Лимиты сброшены");
-    case "rename": { const n = prompt("Новое имя", a.name); if (n) act(() => api("PATCH", path, { name: n })); return; }
-    case "delete": if (confirm(`Удалить аккаунт «${a.name}»? Сессия в прокси будет забыта.`)) act(() => api("DELETE", path), "Удалён"); return;
+    case "cooldowns": return act(() => api("DELETE", `${path}/cooldowns`), "Limits reset");
+    case "rename": { const n = prompt("New name", a.name); if (n) act(() => api("PATCH", path, { name: n })); return; }
+    case "delete": if (confirm(`Delete account "${a.name}"? The proxy session will be forgotten.`)) act(() => api("DELETE", path), "Deleted"); return;
     case "proxy": {
-      const v = prompt("Прокси для этого аккаунта (http://host:port или socks5://host:port).\nПусто — напрямую.\nНапример: http://127.0.0.1:8118 — локальный прокси с выходом на другой сервер.", a.proxy || "");
+      const v = prompt("Proxy for this account (http://host:port or socks5://host:port).\nEmpty — direct.\nExample: http://127.0.0.1:8118 — a local proxy exiting via another server.", a.proxy || "");
       if (v === null) return;
-      return act(() => api("POST", `${path}/proxy`, { proxy: v }), "Прокси сохранён и проверен. Перелогинь аккаунт, чтобы вход тоже шёл через него.");
+      return act(() => api("POST", `${path}/proxy`, { proxy: v }), "Proxy saved and checked. Sign in again to enter through it.");
     }
-    case "egress": btn.disabled = true; btn.textContent = "Проверяю…"; return act(() => api("POST", `${path}/proxy/check`), "Выход проверен");
+    case "egress": btn.disabled = true; btn.textContent = "Checking…"; return act(() => api("POST", `${path}/proxy/check`), "Egress checked");
     case "cookies": cookiesFor = id; $("#cookies-name").textContent = a.name; $("#cookies-input").value = ""; $("#cookies-dlg").showModal(); return;
     case "signin": return act(() => startSignin(a));
+    case "open-node": window.open(a.remote.url + "/admin/ui", "_blank"); return;
   }
 });
 $("#signin-finish").onclick = async (e) => {
   const b = e.currentTarget; if (b.disabled) return;
-  b.disabled = true; b.textContent = "Забираю сессию…";
-  await act(async () => { await api("POST", `/admin/accounts/${signinFor}/login/finish`); $("#signin").close(); $("#vnc").src = "about:blank"; }, "Сессия передана прокси");
-  b.disabled = false; b.textContent = "Готово — забрать сессию";
+  b.disabled = true; b.textContent = "Taking the session…";
+  await act(async () => { await api("POST", `/admin/accounts/${signinFor}/login/finish`); $("#signin").close(); $("#vnc").src = "about:blank"; }, "Session handed to the proxy");
+  b.disabled = false; b.textContent = "Done — take the session";
 };
 $("#signin-cancel").onclick = () => act(async () => {
   await api("POST", `/admin/accounts/${signinFor}/login/cancel`); $("#signin").close(); $("#vnc").src = "about:blank";
@@ -985,15 +1034,15 @@ $("#signin-cancel").onclick = () => act(async () => {
 $("#signin").addEventListener("cancel", (e) => e.preventDefault());
 $("#cookies-form").onsubmit = (e) => {
   e.preventDefault();
-  act(async () => { await api("POST", `/admin/accounts/${cookiesFor}/cookies`, { cookies: $("#cookies-input").value }); $("#cookies-dlg").close(); }, "Cookies сохранены");
+  act(async () => { await api("POST", `/admin/accounts/${cookiesFor}/cookies`, { cookies: $("#cookies-input").value }); $("#cookies-dlg").close(); }, "Cookies saved");
 };
 document.querySelectorAll("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
 $("#secret-copy").onclick = async () => {
   const v = $("#secret-value"); v.select();
-  try { await navigator.clipboard.writeText(v.value); toast("Скопировано"); } catch { document.execCommand("copy"); toast("Скопировано"); }
+  try { await navigator.clipboard.writeText(v.value); toast("Copied"); } catch { document.execCommand("copy"); toast("Copied"); }
 };
 $("#lb-delete").onclick = () => {
-  if (confirm("Удалить картинку?")) act(async () => { await api("DELETE", `/admin/gallery/${encodeURIComponent(lightboxName)}`); $("#lightbox").close(); });
+  if (confirm("Delete the image?")) act(async () => { await api("DELETE", `/admin/gallery/${encodeURIComponent(lightboxName)}`); $("#lightbox").close(); });
 };
 
 // ---- session, theme, refresh -------------------------------------------------
