@@ -451,12 +451,15 @@ class TelegramBot:
             from gemini_webapi_proxy.config import get_settings
 
             if action == "t":
-                assert pool.store is not None
-                pool.store.update(account_id, enabled=not slot.account.enabled)
-                pool.sync()
-                if not slot.account.enabled:
-                    await slot.close()
-                note = "Enabled" if slot.account.enabled else "Disabled"
+                if slot.is_remote:
+                    note = f"remote — manage on node {slot.node.name}"
+                else:
+                    assert pool.store is not None
+                    pool.store.update(account_id, enabled=not slot.account.enabled)
+                    pool.sync()
+                    if not slot.account.enabled:
+                        await slot.close()
+                    note = "Enabled" if slot.account.enabled else "Disabled"
             elif action == "c":
                 slot.cooldowns.clear()
                 note = "Limits reset"

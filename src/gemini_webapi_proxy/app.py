@@ -21,6 +21,7 @@ from gemini_webapi_proxy.routes import (
     health,
     images,
     models,
+    nodes,
     telegram,
     videos,
 )
@@ -82,6 +83,8 @@ for r in (
     accounts.ui_router,
     accounts.router,
     dashboard.router,
+    nodes.router,
+    nodes.admin_router,
     telegram.router,
 ):
     app.include_router(r)

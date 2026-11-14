@@ -27,6 +27,8 @@ from gemini_webapi.exceptions import AuthError, TemporarilyBlockedError, UsageLi
 
 from gemini_webapi_proxy.client import curl_compat
 from gemini_webapi_proxy.client.accounts import ACCOUNTS_FILE, Account, AccountStore
+from gemini_webapi_proxy.client.nodes import Node, RemoteClient, RemoteModel
+from gemini_webapi_proxy.client.nodes import nodes as nodes_manager
 from gemini_webapi_proxy.client.quota import quota_report
 from gemini_webapi_proxy.client.registry import ModelRegistry
 from gemini_webapi_proxy.config import Settings, get_settings
@@ -127,6 +129,8 @@ def _quota_reset(client: Any, fallback: float) -> float:
 
 class Slot:
     """Runtime state of one account."""
+
+    is_remote = False
 
     def __init__(self, account: Account) -> None:
         self.account = account
@@ -330,6 +334,109 @@ class Slot:
         }
 
 
+class RemoteSlot(Slot):
+    """An account that lives on a linked slave node (see client/nodes.py).
+
+    It behaves like a local slot in the pool: same id/priority ordering, cooldowns,
+    events and report.  Only the transport differs — ``ensure`` hands out a
+    :class:`RemoteClient` that forwards generations to the slave, which runs them
+    through its own pool pinned to this account.
+    """
+
+    is_remote = True
+
+    def __init__(self, node: Node, acc: dict) -> None:
+        account = Account(
+            id=self.remote_id(node, acc),
+            name=f"{node.name}/{acc.get('name') or acc['id']}",
+            source="stored",
+            enabled=bool(acc.get("enabled", True)),
+            priority=node.priority * 1000 + int(acc.get("priority") or 0),
+            email=acc.get("email"),
+        )
+        super().__init__(account)
+        self.node = node
+        self.remote_account_id = acc["id"]
+        self._report = acc
+        self.error = acc.get("error")
+        if acc.get("state") in ("needs_login", "logged_out"):
+            self.needs_login = True
+
+    @staticmethod
+    def remote_id(node: Node, acc: dict) -> str:
+        return f"{node.id}::{acc['id']}"
+
+    def update_report(self, acc: dict) -> None:
+        self._report = acc
+        self.account.enabled = bool(acc.get("enabled", True))
+        self.account.email = acc.get("email")
+        self.account.name = f"{self.node.name}/{acc.get('name') or acc['id']}"
+        self.error = acc.get("error")
+        self.needs_login = acc.get("state") in ("needs_login", "logged_out")
+
+    async def ensure(self, settings: Settings) -> RemoteClient | None:
+        if not self.account.enabled or self.needs_login or not self.node.online:
+            return self.client
+        if self.client is None:
+            async with self.lock:
+                if self.client is None:
+                    self.client = RemoteClient(self.node, self.remote_account_id, self.models())
+        return self.client
+
+    async def paced(self, settings: Settings, call: Callable[..., Awaitable[T]], *args: Any) -> T:
+        """No egress to set: the traffic to Google leaves from the slave, not here.
+
+        The slave paces the request itself (its own pool gate); this gate only
+        bounds how many forwards this master fires at one node at once.
+        """
+        async with self.gate(settings):
+            self.active += 1
+            try:
+                return await call(*args)
+            finally:
+                self.active -= 1
+
+    def models(self) -> list:
+        return [RemoteModel(n) for n in (self._report.get("models") or [])]
+
+    def state(self) -> str:
+        if not self.account.enabled:
+            return "disabled"
+        if self.needs_login:
+            return "needs_login"
+        if not self.node.online:
+            return "error"
+        if self.client is not None:
+            return "ok"
+        if self.error:
+            return "error"
+        return self._report.get("state") or "idle"
+
+    def report(self) -> dict[str, Any]:
+        now = time.time()
+        return {
+            **self.account.public(),
+            "state": self.state(),
+            "error": self.error or self.node.error,
+            "requests": self.requests,
+            "active": self.active,
+            "last_used": self.last_used,
+            "cooldowns": {k: v for k, v in self.cooldowns.items() if v > now},
+            "models": list(self._report.get("models") or []),
+            "quota": self._report.get("quota"),
+            "remote": {
+                "node": self.node.name,
+                "node_id": self.node.id,
+                "account": self.remote_account_id,
+                "online": self.node.online,
+                "url": self.node.url,
+            },
+        }
+
+    async def close(self) -> None:
+        self.client = None
+
+
 @dataclass
 class Lease:
     slot: Slot
@@ -347,23 +454,39 @@ class AccountPool:
         if self.store is None or self.store.path != path:
             self.store = AccountStore(path)
             self.slots = {}
+        nodes_manager.configure(settings)
         self.sync()
         return self.store
 
     def sync(self) -> None:
-        """Match the slots to the store after an account was added, changed or removed."""
+        """Match the slots to the store and the linked nodes after a change."""
         assert self.store is not None
         accounts = {a.id: a for a in self.store.all()}
-        for gone in set(self.slots) - set(accounts):
+        remote: dict[str, tuple[Node, dict]] = {}
+        if nodes_manager.store is not None:
+            for node in nodes_manager.store.all():
+                if not node.enabled:
+                    continue
+                for acc in node.accounts:
+                    remote[RemoteSlot.remote_id(node, acc)] = (node, acc)
+        for gone in set(self.slots) - set(accounts) - set(remote):
             slot = self.slots.pop(gone)
             if slot.client is not None:
                 asyncio.get_running_loop().create_task(slot.close())
         for account in accounts.values():
             slot = self.slots.get(account.id)
-            if slot is None:
+            if slot is None or slot.is_remote:
                 self.slots[account.id] = Slot(account)
             else:
                 slot.account = account
+        for rid, (node, acc) in remote.items():
+            slot = self.slots.get(rid)
+            if slot is None or not slot.is_remote:
+                self.slots[rid] = RemoteSlot(node, acc)
+            else:
+                slot.node = node
+                slot.account.priority = node.priority * 1000 + int(acc.get("priority") or 0)
+                slot.update_report(acc)
 
     def ordered(self) -> list[Slot]:
         return sorted(self.slots.values(), key=lambda s: (s.account.priority, s.id))
@@ -459,10 +582,18 @@ class AccountPool:
                 await slot.close()
                 last = exc
             except Exception as exc:
-                if _client_authenticated(lease.client):
+                if lease.slot.is_remote:
+                    # The node failed mid-request: mark the slot and move on to
+                    # another account (local or on another node).
+                    lease.slot.error = str(exc)[:300]
+                    lease.slot.down = True
+                    lease.slot.client = None
+                    last = exc
+                elif _client_authenticated(lease.client):
                     raise
-                slot.logged_out(f"session lost during a request: {exc}")
-                last = exc
+                else:
+                    slot.logged_out(f"session lost during a request: {exc}")
+                    last = exc
 
     def flag_if_abused(self, slot: Slot) -> bool:
         """Switch off an account Google flagged for abuse: more traffic only makes it worse."""
@@ -561,6 +692,11 @@ async def lifespan(app):  # type: ignore[no-untyped-def]
         await bot.start(settings)
     except Exception as exc:  # the proxy works without its bot
         logger.warning("telegram bot: %s", exc)
+    try:
+        await nodes_manager.start(settings)
+    except Exception as exc:  # the proxy works without its linked nodes
+        logger.warning("nodes: %s", exc)
     yield
+    await nodes_manager.stop()
     await bot.stop()
     await close_client()

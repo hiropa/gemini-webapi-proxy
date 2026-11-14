@@ -82,6 +82,14 @@ class Settings(BaseSettings):
     http_proxy: str | None = None
     cdn_direct: bool = True  # bypass proxy for Google CDN domains
 
+    # -- Linked nodes (master <-> slave, see docs/nodes.md) ---------------
+    # Token guarding this instance's /node/* API when it acts as a slave.
+    # Unset: the node API is disabled.  When unset, the admin UI can generate
+    # and persist one in <data_dir>/node_token.txt.
+    node_token: str | None = None
+    # How often the master re-reads each linked node's account list.
+    node_refresh_interval: float = 30.0
+
     # -- Behaviour --------------------------------------------------------
     chat_timeout: float = 180.0
     image_timeout: float = 300.0
@@ -162,7 +170,7 @@ class Settings(BaseSettings):
             return None
         return v
 
-    @field_validator("api_key", "admin_password", mode="before")
+    @field_validator("api_key", "admin_password", "node_token", mode="before")
     @classmethod
     def _empty_api_key_to_none(cls, v: Any) -> Any:
         if isinstance(v, str) and not v.strip():

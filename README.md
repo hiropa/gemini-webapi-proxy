@@ -105,6 +105,7 @@ client — without copy-pasting prompts into the web UI.
 - 🎬 **Video generation (Veo)** — OpenAI Videos API shape: `POST /openai/v1/videos` → job → mp4
 - 🍪 **Pluggable cookie sources** — desktop browser (Safari/Chrome/…), env vars, Netscape cookie file
 - 👥 **Several accounts + admin UI** — `/admin/ui`: state and limits per account, sign-in through the server's browser, automatic switch when an account runs out, a proxy per account, request journal, client keys, playground ([docs/accounts.md](docs/accounts.md))
+- 🔗 **Linked machines (master ↔ slave)** — run the proxy on several machines and use each other's accounts from one master, each leaving from its own IP; more reliable than HTTP/SOCKS proxies ([docs/nodes.md](docs/nodes.md))
 - 🤖 **Telegram bot** — account status and controls, alerts on logged-out / flagged / exhausted accounts ([docs/telegram.md](docs/telegram.md))
 - 🐳 **One-command install** — `scripts/install.sh` (Linux, macOS) / `scripts/install.ps1` (Windows): proxy + sign-in browser in Docker, keys generated, auto-restart
 - 🔌 **Multi-fallback image download** — httpx (RPC / preview URL) → gemini-webapi library save; no browser in the image
@@ -165,6 +166,16 @@ Then, on any system:
    the page; add more accounts with **+ Account**, set a proxy per account in its card.
 3. Point OpenAI clients at `http://127.0.0.1:4982/openai/v1` with `Bearer <GOP_API_KEY>`
    from `.env`, or create a named key per client in the **Keys** tab.
+
+### Several machines: link a node (master ↔ slave)
+
+To spread accounts over several IP addresses reliably (per-account HTTP/SOCKS proxies
+are easily detected), run this proxy on each machine and link them: on a **slave** set
+`GOP_NODE_TOKEN` (or generate one in its admin UI, System tab); on the **master** open
+the **Nodes** tab and link the slave's URL + token. The slave's accounts then appear on
+the master's **Accounts** tab (`slave/account`) and are used like local ones — same
+models list, same failover — while Google sees the slave's own IP. Link several slaves;
+see [docs/nodes.md](docs/nodes.md).
 
 Manual setup with plain `docker compose`: create `.env` with `GOP_API_KEY=...` and
 `GOP_ADMIN_PASSWORD=...` (`.env.example` is for running from source, not for Docker), then

@@ -107,6 +107,15 @@ def _slot(account_id: str):
     return slot
 
 
+def _reject_remote(slot) -> None:
+    """Accounts that live on a linked node are managed on that node, not here."""
+    if slot.is_remote:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Remote account on node {slot.node.name!r}: manage it there ({slot.node.url}/admin/ui)",
+        )
+
+
 @router.get("/accounts")
 async def list_accounts() -> dict:
     _store()
@@ -136,6 +145,7 @@ class AccountPatch(BaseModel):
 @router.patch("/accounts/{account_id}")
 async def update_account(account_id: str, body: AccountPatch) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     changes = body.model_dump(exclude_none=True)
     if changes:
         _store().update(account_id, **changes)
@@ -148,6 +158,7 @@ async def update_account(account_id: str, body: AccountPatch) -> dict:
 @router.delete("/accounts/{account_id}")
 async def delete_account(account_id: str) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     await slot.close()
     _store().remove(account_id)
     pool.sync()
@@ -157,6 +168,7 @@ async def delete_account(account_id: str) -> dict:
 @router.post("/accounts/{account_id}/check")
 async def check_account(account_id: str) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     await pool.drop(account_id)
     await slot.ensure(get_settings())
     return slot.report()
@@ -165,6 +177,7 @@ async def check_account(account_id: str) -> dict:
 @router.delete("/accounts/{account_id}/cooldowns")
 async def clear_cooldowns(account_id: str) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     slot.cooldowns.clear()
     return slot.report()
 
@@ -174,6 +187,7 @@ class CookiesIn(BaseModel):
 
 
 async def _use_jar(account_id: str, jar: dict[str, str], email: str | None) -> dict:
+    _reject_remote(_slot(account_id))
     if "__Secure-1PSID" not in jar:
         raise HTTPException(status_code=400, detail="No __Secure-1PSID: not signed in to Google")
     slot = _slot(account_id)
@@ -254,6 +268,7 @@ async def set_proxy(account_id: str, body: ProxyIn) -> dict:
     again through the new proxy so both match.
     """
     slot = _slot(account_id)
+    _reject_remote(slot)
     proxy = (body.proxy or "").strip() or None
     if proxy:
         scheme = proxy.split("://", 1)[0].lower() if "://" in proxy else ""
@@ -281,6 +296,7 @@ async def set_proxy(account_id: str, body: ProxyIn) -> dict:
 @router.post("/accounts/{account_id}/proxy/check")
 async def check_proxy(account_id: str) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     try:
         egress = await egress_check(
             slot.account.proxy or get_settings().http_proxy, slot.account.cookies
@@ -295,6 +311,7 @@ async def check_proxy(account_id: str) -> dict:
 @router.post("/accounts/{account_id}/login/start")
 async def login_start(account_id: str) -> dict:
     slot = _slot(account_id)
+    _reject_remote(slot)
     busy = pool_module.current_sign_in()
     if busy not in (None, account_id):
         raise HTTPException(status_code=409, detail=f"Sign-in to {busy!r} is in progress")

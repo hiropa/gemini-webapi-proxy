@@ -305,7 +305,7 @@ const ICON = {
   system: '<path d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4L10.6 6a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4ZM13 15.5A3.5 3.5 0 1 1 16.5 12 3.5 3.5 0 0 1 13 15.5Z" transform="translate(-1 0)"/>',
 };
 const TABS = [
-  ["overview", "Overview"], ["accounts", "Accounts"], ["requests", "Requests"], ["keys", "Keys"],
+  ["overview", "Overview"], ["accounts", "Accounts"], ["nodes", "Nodes"], ["requests", "Requests"], ["keys", "Keys"],
   ["models", "Models"], ["playground", "Playground"], ["media", "Media"], ["telegram", "Telegram"], ["system", "System"],
 ];
 const ACC_STATE = {
@@ -510,19 +510,22 @@ function accountCard(a, i, n) {
       ${abuse ? status("abuse flag", "critical") : ""}
       ${a.source === "settings" ? `<span class="chip" title="Cookies come from GOP_COOKIE_SOURCE">from settings</span>` : ""}
       ${accountsData.signing_in === a.id ? status("signing in", "warning") : ""}
+      ${a.remote ? `<span class="chip" title="This account lives on a linked node">via ${esc(a.remote.node)}</span>` : ""}
       <span class="sp"></span><span class="muted small">priority ${a.priority}</span>
-      <button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Up">↑</button>
-      <button class="sm" data-act="down" ${i === n - 1 ? "disabled" : ""} title="Down">↓</button>
+      ${a.remote ? "" : `<button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Up">↑</button>
+      <button class="sm" data-act="down" ${i === n - 1 ? "disabled" : ""} title="Down">↓</button>`}
     </div>
     <div class="acc-meta"><span>requests: ${num(a.requests)}</span>${a.active ? `<span>active now: ${a.active}</span>` : ""}
       <span>last used: ${rel(a.last_used)}</span><span>signed in: ${when(a.signed_in_at)}</span></div>
-    <div class="acc-meta">${egressLine(a)}</div>
+    ${a.remote ? `<div class="acc-meta"><span class="muted">egress: the node's own address (${esc(a.remote.url)})</span></div>` : `<div class="acc-meta">${egressLine(a)}</div>`}
     ${a.models.length ? `<div class="chips sec">${a.models.map((m) => `<span class="chip">${esc(m)}</span>`).join("")}</div>` : ""}
     ${cds.length ? `<div class="sec row small">${status("cooldown", "warning")}${cds.map(([k, t]) => `<span>${esc(k)} until ${esc(clock(t, true))} (${rel(t)})</span>`).join(" · ")}
       <button class="sm" data-act="cooldowns">Reset</button></div>` : ""}
     <div class="sec">${quotaMeters(q)}</div>
     ${a.error ? `<div class="err small sec">${esc(a.error)}</div>` : ""}
     <div class="acc-actions">
+      ${a.remote ? `<button class="primary" data-act="open-node">Sign in on ${esc(a.remote.node)}…</button>
+      <span class="muted small">managed on the node</span>` : `
       <button class="primary" data-act="signin">${a.state === "ok" ? "Sign in again" : "Sign in"}</button>
       <button data-act="cookies">Paste cookies</button>
       <button data-act="proxy">Proxy…</button>
@@ -530,7 +533,7 @@ function accountCard(a, i, n) {
       <button data-act="check" title="Reconnect to Google and re-read limits">Check</button>
       <button data-act="toggle">${a.enabled ? "Disable" : "Enable"}</button>
       <button data-act="rename">Rename</button>
-      <button class="danger" data-act="delete">Delete</button>
+      <button class="danger" data-act="delete">Delete</button>`}
     </div></div>`;
 }
 
@@ -885,11 +888,54 @@ PAGES.telegram = async () => {
   };
 };
 
+PAGES.nodes = async () => {
+  const n = await api("GET", "/admin/nodes");
+  view().innerHTML = head("Nodes", "linked machines (slaves) whose accounts this proxy can use like local ones") + `
+    <div class="card sec"><h2>Link a node</h2>
+      <form id="node-form" class="grid" style="gap:10px">
+        <label class="small muted">Name</label><input id="nd-name" placeholder="slave-1">
+        <label class="small muted">URL of the other proxy</label><input id="nd-url" placeholder="https://slave.example.com:4982">
+        <label class="small muted">Its node token (on the slave: GOP_NODE_TOKEN, or regenerate it in its admin UI)</label>
+        <input id="nd-token" type="password" autocomplete="off" placeholder="gop-node-…">
+        <div class="row"><button class="primary">Link node</button>
+          <span class="muted small">The slave's <code>/node</code> API must be reachable from here — use https or an SSH tunnel. Its accounts then appear on the Accounts tab as <i>node/account</i>.</span></div>
+      </form></div>
+    ${n.nodes.map((x) => `<div class="card sec" data-id="${esc(x.id)}">
+      <div class="acc-head"><span class="name">${esc(x.name)}</span>
+        ${x.online ? status("online", "good") : status(x.enabled ? "unreachable" : "disabled", x.enabled ? "critical" : "")}
+        <span class="muted small mono">${esc(x.url)}</span>
+        <span class="sp"></span><span class="muted small">priority ${x.priority} · ${x.accounts.length} account(s) · ${x.last_ok ? "seen " + rel(x.last_ok) : "never reached"}</span></div>
+      ${x.error ? `<div class="err small sec">${esc(x.error)}</div>` : ""}
+      ${x.accounts.length ? `<div class="chips sec">${x.accounts.map((a) => `<span class="chip">${esc(a.name || a.id)} · ${esc(a.state || "?")}</span>`).join("")}</div>` : ""}
+      <div class="acc-actions">
+        <button class="sm" data-nact="refresh">Refresh</button>
+        <button class="sm" data-nact="toggle">${x.enabled ? "Disable" : "Enable"}</button>
+        <button class="sm danger" data-nact="remove">Unlink</button>
+      </div></div>`).join("") || `<div class="card empty">No linked nodes yet.</div>`}`;
+  $("#node-form").onsubmit = (e) => {
+    e.preventDefault();
+    act(() => api("POST", "/admin/nodes", { name: $("#nd-name").value.trim(), url: $("#nd-url").value.trim(), token: $("#nd-token").value.trim() }), "Linked");
+  };
+  view().querySelectorAll("[data-nact]").forEach((b) => (b.onclick = () => {
+    const id = b.closest("[data-id]").dataset.id, x = n.nodes.find((y) => y.id === id);
+    if (b.dataset.nact === "refresh") return act(() => api("POST", `/admin/nodes/${id}/refresh`), "Refreshed");
+    if (b.dataset.nact === "toggle") return act(() => api("PATCH", `/admin/nodes/${id}`, { enabled: !x.enabled }));
+    if (b.dataset.nact === "remove" && confirm(`Unlink node "${x.name}"? Its accounts leave the pool here; they stay on the node.`))
+      return act(() => api("DELETE", `/admin/nodes/${id}`), "Unlinked");
+  }));
+};
+
 PAGES.system = async () => {
   const s = await api("GET", "/admin/system");
+  const nt = await api("GET", "/admin/node-token");
   const kv = (o) => `<dl class="kv">${Object.entries(o).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`;
   const yn = (b) => (b ? status("yes", "good") : status("no", ""));
   view().innerHTML = head("System") + `<div class="grid cols-2">
+    <div class="card"><h2>Linked nodes (this instance as a slave)</h2>${kv({
+      "node token": nt.token_set ? `<span class="mono">${esc(nt.token)}</span> <span class="muted small">(set: ${esc(nt.token_set ? "GOP_NODE_TOKEN or data/node_token.txt" : "")})</span>` : "not set",
+    })}
+      <div class="row sec"><span class="muted small">Give this token to the master when linking this machine (Nodes tab there). The <code>/node</code> API is off without a token.</span>
+      <span class="sp"></span><button class="sm" id="nt-regen">Regenerate token</button></div></div>
     <div class="card"><h2>Proxy</h2>${kv({ "version": esc(s.version), "gemini-webapi": esc(s.gemini_webapi), "python": esc(s.python),
       "started": esc(when(s.started_at)), "memory": s.rss_mb ? `${s.rss_mb}MB` : "—", "journal records": num(s.journal_records) })}</div>
     <div class="card"><h2>Sign-in browser</h2>${kv({
@@ -906,6 +952,8 @@ PAGES.system = async () => {
       "cooldown after limit": `${s.settings.quota_cooldown / 60} min (video ${s.settings.video_cooldown / 3600} h)`,
       "per account at once": `${s.settings.account_concurrency}, pause between starts ${s.settings.account_min_interval}s` })}</div>
   </div>`;
+  const regen = $("#nt-regen");
+  if (regen) regen.onclick = () => { if (confirm("Regenerate the node token? Old links stop working immediately.")) act(async () => { const r = await api("POST", "/admin/node-token"); toast("New token: " + r.token); }); };
 };
 
 // ---- shell ---------------------------------------------------------------
@@ -971,6 +1019,7 @@ view().addEventListener("click", (ev) => {
     case "egress": btn.disabled = true; btn.textContent = "Checking…"; return act(() => api("POST", `${path}/proxy/check`), "Egress checked");
     case "cookies": cookiesFor = id; $("#cookies-name").textContent = a.name; $("#cookies-input").value = ""; $("#cookies-dlg").showModal(); return;
     case "signin": return act(() => startSignin(a));
+    case "open-node": window.open(a.remote.url + "/admin/ui", "_blank"); return;
   }
 });
 $("#signin-finish").onclick = async (e) => {

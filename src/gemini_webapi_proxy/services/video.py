@@ -205,6 +205,8 @@ async def _run_job(settings: Settings, job: VideoJob) -> None:
         ref_paths: list[Path] = []
 
         async def call(client, runtime) -> Path:
+            if hasattr(client, "request_mode"):  # remote node account
+                client.request_mode = "video"
             slot = pool.slot_of(client)
             job.account = slot.id if slot else None
             sanitize_gemini_client_cookies(client)

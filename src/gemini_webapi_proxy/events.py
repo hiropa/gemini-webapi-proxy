@@ -23,6 +23,8 @@ KINDS = {
     "blocked": "Google answered 429 (unusual traffic)",
     "all_down": "No account can serve the request",
     "recovered": "Account working again",
+    "node_down": "Linked node unreachable",
+    "node_up": "Linked node back online",
 }
 THROTTLE = 30 * 60.0
 

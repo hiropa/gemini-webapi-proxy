@@ -103,6 +103,8 @@ async def create_chat_completion(
         ref_paths = await materialize_reference_images(msg_refs, proxy=settings.http_proxy)
 
     async def call(client, runtime) -> ChatCompletionResponse:
+        if hasattr(client, "request_mode"):  # remote node account
+            client.request_mode = "chat"
         output = await asyncio.wait_for(
             client.generate_content(
                 prompt,
@@ -163,6 +165,8 @@ async def create_image_generation(
     full_prompt = _image_prompt(prompt, size, has_reference=bool(ref_paths), edit=edit)
 
     async def call(client, runtime) -> None:
+        if hasattr(client, "request_mode"):  # remote node account
+            client.request_mode = "image"
         attempts = 0
         max_attempts = max(n, 1) + 2
         while len(data) < n and attempts < max_attempts:

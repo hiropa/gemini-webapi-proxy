@@ -98,12 +98,20 @@ async def generated_image_to_b64(
 ) -> str:
     """Public entry point: download an image and return base64-encoded bytes.
 
-    Performs up to 3 passes:
+    Images that already carry their bytes (a data: URL or ``b64_json`` — e.g.
+    from a linked node, which has the session cookies and downloaded it) are
+    returned as-is.  Otherwise performs up to 3 passes:
       * on ``AuthError`` / 401-403: invalidate the client and re-read
         cookies from the configured source
       * on ``ImageExportError(503)``: re-init the underlying session
       * on other ``ImageExportError``: re-init and try again
     """
+    url = getattr(image, "url", "") or ""
+    if isinstance(url, str) and url.startswith("data:"):
+        return url.split(",", 1)[1]
+    inline = getattr(image, "b64_json", None)
+    if inline:
+        return inline
     last_cookie_err: CookieExpiredError | None = None
     last_exc: Exception | None = None
 
