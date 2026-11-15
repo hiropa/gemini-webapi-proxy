@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — fork Muxee4ka/gemini-webapi-proxy
 
+### Changed
+- Master/slave rebuilt around an explicit mode (`GOP_MODE=master|slave`, asked by the
+  installers via `--mode` / `-Mode` or interactively). A **slave** can no longer add or
+  change accounts itself (its admin API answers 403, the Telegram bot is read-only,
+  `/openai/v1` is not served) — every account configuration and status change is made
+  from the **master** over the link: new `/node/accounts*` API on the slave and
+  `/admin/nodes/{id}/accounts/…` forwarding on the master (create, rename, enable,
+  delete, cookies, check, reset limits, sign-in). Slave egress is enforced: proxies
+  (global and per-account) are ignored in slave mode, so account traffic can only
+  leave via the slave's own IP. Docs: docs/nodes.md
+
 ### Added
 - Telegram bot (admin UI → Telegram; `docs/telegram.md`): admins linked by a one-time
   link, `/status`, `/accounts` with enable/disable/reset/check buttons, `/stats`, `/events`;

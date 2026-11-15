@@ -36,8 +36,9 @@ from gemini_webapi_proxy.auth import (
 from gemini_webapi_proxy.client import pool as pool_module
 from gemini_webapi_proxy.client.pool import pool
 from gemini_webapi_proxy.config import get_settings
-from gemini_webapi_proxy.cookies.cdp import cancel_sign_in, chrome_proxy, open_sign_in, take_session
-from gemini_webapi_proxy.utils.cookies import parse_cookie_string
+from gemini_webapi_proxy.cookies.cdp import chrome_proxy
+from gemini_webapi_proxy.services import account_ops
+from gemini_webapi_proxy.services.account_ops import reject_slave_mode
 
 log = logging.getLogger(__name__)
 
@@ -95,6 +96,65 @@ async def sign_out(response: Response) -> dict:
 
 
 # ---- Accounts ---------------------------------------------------------------
+# Reading the list is always allowed; changing accounts is reserved to the master
+# (reject_slave_mode).  The sign-in flow stays local: the browser lives here.
+
+
+@router.get("/accounts")
+async def list_accounts() -> dict:
+    pool.configure(get_settings())
+    return {
+        "accounts": [s.report() for s in pool.ordered()],
+        "signing_in": pool_module.current_sign_in(),
+        "mode": get_settings().mode,
+    }
+
+
+class AccountIn(BaseModel):
+    name: str
+
+
+@router.post("/accounts", dependencies=[Depends(reject_slave_mode)])
+async def add_account(body: AccountIn) -> dict:
+    return account_ops.add_account(body.name)
+
+
+class AccountPatch(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None
+    priority: int | None = None
+
+
+@router.patch("/accounts/{account_id}", dependencies=[Depends(reject_slave_mode)])
+async def update_account(account_id: str, body: AccountPatch) -> dict:
+    return await account_ops.update_account(account_id, body.model_dump(exclude_none=True))
+
+
+@router.delete("/accounts/{account_id}", dependencies=[Depends(reject_slave_mode)])
+async def delete_account(account_id: str) -> dict:
+    return await account_ops.delete_account(account_id)
+
+
+@router.post("/accounts/{account_id}/check", dependencies=[Depends(reject_slave_mode)])
+async def check_account(account_id: str) -> dict:
+    return await account_ops.check_account(account_id)
+
+
+@router.delete("/accounts/{account_id}/cooldowns", dependencies=[Depends(reject_slave_mode)])
+async def clear_cooldowns(account_id: str) -> dict:
+    return account_ops.clear_cooldowns(account_id)
+
+
+class CookiesIn(BaseModel):
+    cookies: str  # "name=value; name2=value2" as copied from a browser
+
+
+@router.post("/accounts/{account_id}/cookies", dependencies=[Depends(reject_slave_mode)])
+async def paste_cookies(account_id: str, body: CookiesIn) -> dict:
+    return await account_ops.set_cookies(account_id, body.cookies)
+
+
+# ---- Outbound proxy of an account --------------------------------------------
 def _store():
     return pool.configure(get_settings())
 
@@ -108,7 +168,7 @@ def _slot(account_id: str):
 
 
 def _reject_remote(slot) -> None:
-    """Accounts that live on a linked node are managed on that node, not here."""
+    """Accounts that live on a linked node are managed through that node."""
     if slot.is_remote:
         raise HTTPException(
             status_code=409,
@@ -116,94 +176,6 @@ def _reject_remote(slot) -> None:
         )
 
 
-@router.get("/accounts")
-async def list_accounts() -> dict:
-    _store()
-    return {
-        "accounts": [s.report() for s in pool.ordered()],
-        "signing_in": pool_module.current_sign_in(),
-    }
-
-
-class AccountIn(BaseModel):
-    name: str
-
-
-@router.post("/accounts")
-async def add_account(body: AccountIn) -> dict:
-    account = _store().add(body.name)
-    pool.sync()
-    return pool.slots[account.id].report()
-
-
-class AccountPatch(BaseModel):
-    name: str | None = None
-    enabled: bool | None = None
-    priority: int | None = None
-
-
-@router.patch("/accounts/{account_id}")
-async def update_account(account_id: str, body: AccountPatch) -> dict:
-    slot = _slot(account_id)
-    _reject_remote(slot)
-    changes = body.model_dump(exclude_none=True)
-    if changes:
-        _store().update(account_id, **changes)
-        pool.sync()
-    if changes.get("enabled") is False:
-        await slot.close()
-    return slot.report()
-
-
-@router.delete("/accounts/{account_id}")
-async def delete_account(account_id: str) -> dict:
-    slot = _slot(account_id)
-    _reject_remote(slot)
-    await slot.close()
-    _store().remove(account_id)
-    pool.sync()
-    return {"ok": True}
-
-
-@router.post("/accounts/{account_id}/check")
-async def check_account(account_id: str) -> dict:
-    slot = _slot(account_id)
-    _reject_remote(slot)
-    await pool.drop(account_id)
-    await slot.ensure(get_settings())
-    return slot.report()
-
-
-@router.delete("/accounts/{account_id}/cooldowns")
-async def clear_cooldowns(account_id: str) -> dict:
-    slot = _slot(account_id)
-    _reject_remote(slot)
-    slot.cooldowns.clear()
-    return slot.report()
-
-
-class CookiesIn(BaseModel):
-    cookies: str  # "name=value; name2=value2" as copied from a browser
-
-
-async def _use_jar(account_id: str, jar: dict[str, str], email: str | None) -> dict:
-    _reject_remote(_slot(account_id))
-    if "__Secure-1PSID" not in jar:
-        raise HTTPException(status_code=400, detail="No __Secure-1PSID: not signed in to Google")
-    slot = _slot(account_id)
-    _store().set_cookies(account_id, jar, email)
-    pool.sync()
-    await pool.drop(account_id)
-    await slot.ensure(get_settings())
-    return slot.report()
-
-
-@router.post("/accounts/{account_id}/cookies")
-async def paste_cookies(account_id: str, body: CookiesIn) -> dict:
-    return await _use_jar(account_id, parse_cookie_string(body.cookies), None)
-
-
-# ---- Outbound proxy of an account --------------------------------------------
 class ProxyIn(BaseModel):
     proxy: str | None = None  # http://host:port, socks5://host:port; empty: direct
 
@@ -260,7 +232,7 @@ async def egress_check(proxy: str | None, cookies: dict[str, str] | None = None)
     }
 
 
-@router.post("/accounts/{account_id}/proxy")
+@router.post("/accounts/{account_id}/proxy", dependencies=[Depends(reject_slave_mode)])
 async def set_proxy(account_id: str, body: ProxyIn) -> dict:
     """Set or clear the account's proxy, check it, and restart the account's client.
 
@@ -293,7 +265,7 @@ async def set_proxy(account_id: str, body: ProxyIn) -> dict:
     return slot.report()
 
 
-@router.post("/accounts/{account_id}/proxy/check")
+@router.post("/accounts/{account_id}/proxy/check", dependencies=[Depends(reject_slave_mode)])
 async def check_proxy(account_id: str) -> dict:
     slot = _slot(account_id)
     _reject_remote(slot)
@@ -310,49 +282,17 @@ async def check_proxy(account_id: str) -> dict:
 # ---- Sign-in through the server's browser ----------------------------------
 @router.post("/accounts/{account_id}/login/start")
 async def login_start(account_id: str) -> dict:
-    slot = _slot(account_id)
-    _reject_remote(slot)
-    busy = pool_module.current_sign_in()
-    if busy not in (None, account_id):
-        raise HTTPException(status_code=409, detail=f"Sign-in to {busy!r} is in progress")
-    settings = get_settings()
-    try:
-        # The sign-in leaves through the account's proxy, like its requests will.
-        context = await open_sign_in(settings.cdp_url, slot.account.proxy or settings.http_proxy)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Sign-in browser: {exc}") from exc
-    pool_module.signing_in, pool_module.signing_in_since = account_id, time.monotonic()
-    pool_module.signing_in_context = context
-    return {
-        "ok": True,
-        "vnc": "/admin/vnc/vnc.html?path=admin/vnc/websockify&autoconnect=true&resize=scale&reconnect=true",
-    }
+    return await account_ops.login_start(account_id)
 
 
 @router.post("/accounts/{account_id}/login/finish")
 async def login_finish(account_id: str) -> dict:
-    _slot(account_id)
-    try:
-        jar, email = await take_session(get_settings().cdp_url, pool_module.signing_in_context)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Sign-in browser: {exc}") from exc
-    if "__Secure-1PSID" not in jar:
-        raise HTTPException(status_code=400, detail="Not signed in yet: finish the sign-in first")
-    pool_module.signing_in = pool_module.signing_in_context = None
-    log.info("account %s: signed in through the browser (%s)", account_id, email or "?")
-    return await _use_jar(account_id, jar, email)
+    return await account_ops.login_finish(account_id)
 
 
 @router.post("/accounts/{account_id}/login/cancel")
 async def login_cancel(account_id: str) -> dict:
-    pool_module.signing_in = pool_module.signing_in_context = None
-    try:
-        await cancel_sign_in(get_settings().cdp_url)
-    except Exception as exc:
-        log.warning("sign-in browser: %s", exc)
-    return {"ok": True}
+    return await account_ops.login_cancel(account_id)
 
 
 # ---- noVNC of the sign-in browser, behind the admin session ----------------

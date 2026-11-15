@@ -27,7 +27,13 @@ from gemini_webapi.exceptions import AuthError, TemporarilyBlockedError, UsageLi
 
 from gemini_webapi_proxy.client import curl_compat
 from gemini_webapi_proxy.client.accounts import ACCOUNTS_FILE, Account, AccountStore
-from gemini_webapi_proxy.client.nodes import Node, RemoteClient, RemoteModel
+from gemini_webapi_proxy.client.nodes import (
+    Node,
+    RemoteClient,
+    RemoteModel,
+    effective_node_token,
+    new_node_token,
+)
 from gemini_webapi_proxy.client.nodes import nodes as nodes_manager
 from gemini_webapi_proxy.client.quota import quota_report
 from gemini_webapi_proxy.client.registry import ModelRegistry
@@ -94,6 +100,18 @@ def _client_authenticated(client: GeminiClient) -> bool:
     return getattr(client, "account_status", None) != AccountStatus.UNAUTHENTICATED
 
 
+def outbound_proxy(settings: Settings, account: Account) -> str | None:
+    """The proxy Google-bound traffic of this account leaves through.
+
+    Slave mode is the whole point of a slave: every byte to Google leaves via this
+    machine's own address, so proxies are ignored outright — a leftover
+    GOP_HTTP_PROXY or a proxy stored in accounts.json must not change that.
+    """
+    if settings.is_slave:
+        return None
+    return account.proxy or settings.http_proxy
+
+
 async def _new_client(settings: Settings, account: Account) -> GeminiClient:
     if account.source == "settings":
         bundle = await _load_cookie_bundle(settings)
@@ -102,7 +120,7 @@ async def _new_client(settings: Settings, account: Account) -> GeminiClient:
     if not bundle.is_valid():
         raise RuntimeError("No session cookies (no __Secure-1PSID): sign in to this account")
 
-    client = GeminiClient(bundle.psid, bundle.psidts, proxy=account.proxy or settings.http_proxy)
+    client = GeminiClient(bundle.psid, bundle.psidts, proxy=outbound_proxy(settings, account))
     if bundle.extras:
         client.cookies = dict(bundle.extras)
     # The proxy owns the session once it has the cookies: the sign-in browser forgets
@@ -163,7 +181,7 @@ class Slot:
             if wait > 0:
                 await asyncio.sleep(wait)
             self.next_start = time.monotonic() + settings.account_min_interval
-            token = egress.set(self.account.proxy or settings.http_proxy)
+            token = egress.set(outbound_proxy(settings, self.account))
             self.active += 1
             try:
                 return await call(*args)
@@ -674,6 +692,15 @@ async def close_client() -> None:
 @asynccontextmanager
 async def lifespan(app):  # type: ignore[no-untyped-def]
     settings = get_settings()
+    if settings.is_slave:
+        # A slave serves only its master: make sure the link exists, and keep
+        # Google-bound traffic on this machine's own address.
+        if not effective_node_token(settings):
+            logger.info("slave mode: generated node token %s", new_node_token(settings))
+        if settings.http_proxy:
+            logger.warning(
+                "slave mode: GOP_HTTP_PROXY is ignored - account traffic leaves via this machine's IP only"
+            )
     registry.load_file()
     journal.open(settings.data_dir)
     pool.configure(settings)
@@ -692,11 +719,13 @@ async def lifespan(app):  # type: ignore[no-untyped-def]
         await bot.start(settings)
     except Exception as exc:  # the proxy works without its bot
         logger.warning("telegram bot: %s", exc)
-    try:
-        await nodes_manager.start(settings)
-    except Exception as exc:  # the proxy works without its linked nodes
-        logger.warning("nodes: %s", exc)
+    if not settings.is_slave:
+        try:
+            await nodes_manager.start(settings)
+        except Exception as exc:  # the proxy works without its linked nodes
+            logger.warning("nodes: %s", exc)
     yield
-    await nodes_manager.stop()
+    if not settings.is_slave:
+        await nodes_manager.stop()
     await bot.stop()
     await close_client()

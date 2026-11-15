@@ -27,6 +27,7 @@ from pydantic import BaseModel
 from gemini_webapi_proxy import __version__
 from gemini_webapi_proxy.auth import require_admin
 from gemini_webapi_proxy.client.nodes import (
+    NodeError,
     effective_node_token,
     mask_token,
     new_node_token,
@@ -38,7 +39,7 @@ from gemini_webapi_proxy.client.pool import pinned, pool, registry
 from gemini_webapi_proxy.config import get_settings
 from gemini_webapi_proxy.downloaders.chain import generated_image_to_b64
 from gemini_webapi_proxy.errors import NoAccountError, QuotaExceededError, UpstreamRefusalError
-from gemini_webapi_proxy.services import video
+from gemini_webapi_proxy.services import account_ops, video
 from gemini_webapi_proxy.services.chat import (
     _quota_message,
     _remove_refs,
@@ -77,6 +78,66 @@ async def node_accounts() -> dict:
     return {"accounts": [s.report() for s in pool.ordered() if not s.is_remote]}
 
 
+# ---- Slave side: the master drives this slave's accounts over the link --------
+# The local admin API refuses account changes in slave mode (reject_slave_mode);
+# these endpoints are their counterpart, guarded by the node token instead.
+
+
+class NodeAccountIn(BaseModel):
+    name: str
+
+
+class NodeAccountPatch(BaseModel):
+    name: str | None = None
+    enabled: bool | None = None
+    priority: int | None = None
+
+
+@router.post("/accounts", dependencies=[Depends(require_node_token)])
+async def node_add_account(body: NodeAccountIn) -> dict:
+    return account_ops.add_account(body.name)
+
+
+@router.patch("/accounts/{account_id}", dependencies=[Depends(require_node_token)])
+async def node_update_account(account_id: str, body: NodeAccountPatch) -> dict:
+    return await account_ops.update_account(account_id, body.model_dump(exclude_none=True))
+
+
+@router.delete("/accounts/{account_id}", dependencies=[Depends(require_node_token)])
+async def node_delete_account(account_id: str) -> dict:
+    return await account_ops.delete_account(account_id)
+
+
+@router.post("/accounts/{account_id}/cookies", dependencies=[Depends(require_node_token)])
+async def node_set_cookies(account_id: str, body: account_ops.CookiesIn) -> dict:
+    return await account_ops.set_cookies(account_id, body.cookies)
+
+
+@router.post("/accounts/{account_id}/check", dependencies=[Depends(require_node_token)])
+async def node_check_account(account_id: str) -> dict:
+    return await account_ops.check_account(account_id)
+
+
+@router.delete("/accounts/{account_id}/cooldowns", dependencies=[Depends(require_node_token)])
+async def node_clear_cooldowns(account_id: str) -> dict:
+    return account_ops.clear_cooldowns(account_id)
+
+
+@router.post("/accounts/{account_id}/login/start", dependencies=[Depends(require_node_token)])
+async def node_login_start(account_id: str) -> dict:
+    return await account_ops.login_start(account_id)
+
+
+@router.post("/accounts/{account_id}/login/finish", dependencies=[Depends(require_node_token)])
+async def node_login_finish(account_id: str) -> dict:
+    return await account_ops.login_finish(account_id)
+
+
+@router.post("/accounts/{account_id}/login/cancel", dependencies=[Depends(require_node_token)])
+async def node_login_cancel(account_id: str) -> dict:
+    return await account_ops.login_cancel(account_id)
+
+
 class NodeGenerateIn(BaseModel):
     account: str
     model: str = "gemini-flash"
@@ -96,10 +157,10 @@ def _err(status: int, code: str, message: str, **extra: object) -> JSONResponse:
 
 async def _node_chat(settings, body: NodeGenerateIn) -> dict:
     resolved = registry.resolve_id(body.model)
+    # Slave mode: reference images are fetched via this machine's own address too.
+    ref_proxy = None if settings.is_slave else settings.http_proxy
     ref_paths = (
-        await materialize_reference_images(body.images, proxy=settings.http_proxy)
-        if body.images
-        else []
+        await materialize_reference_images(body.images, proxy=ref_proxy) if body.images else []
     )
 
     async def call(client, runtime) -> dict:
@@ -305,6 +366,113 @@ async def refresh_node(node_id: str) -> dict:
     await nodes_manager.refresh_node(node)
     pool.configure(settings)
     return node.with_accounts()
+
+
+# ---- Master side: manage a slave's accounts over the link ----------------------
+# A slave cannot add or change accounts itself (slave mode); every configuration
+# and status change goes through here, over the node token-guarded link.
+
+
+def _managed_node(node_id: str):
+    store = nodes_manager.configure(get_settings())
+    node = store.get(node_id)
+    if node is None:
+        raise HTTPException(status_code=404, detail=f"No node {node_id!r}")
+    return node
+
+
+async def _forward(call, node, what: str) -> dict:  # type: ignore[no-untyped-def]
+    """Run a NodeClient call, mapping link failures to a 502."""
+    try:
+        return await call
+    except NodeError as exc:
+        raise HTTPException(
+            status_code=502 if exc.status >= 500 else exc.status,
+            detail=f"{node.name}: {what} failed: {exc}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"{node.name}: {what} failed: {exc}") from exc
+
+
+@admin_router.post("/nodes/{node_id}/accounts")
+async def master_add_account(node_id: str, body: NodeAccountIn) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.account_add(body.name), node, "add account")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.patch("/nodes/{node_id}/accounts/{account_id}")
+async def master_update_account(node_id: str, account_id: str, body: NodeAccountPatch) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(
+        client.account_update(account_id, body.model_dump(exclude_none=True)),
+        node,
+        "update account",
+    )
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.delete("/nodes/{node_id}/accounts/{account_id}")
+async def master_delete_account(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.account_delete(account_id), node, "delete account")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.post("/nodes/{node_id}/accounts/{account_id}/cookies")
+async def master_set_cookies(node_id: str, account_id: str, body: account_ops.CookiesIn) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.account_cookies(account_id, body.cookies), node, "set cookies")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.post("/nodes/{node_id}/accounts/{account_id}/check")
+async def master_check_account(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.account_check(account_id), node, "check account")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.delete("/nodes/{node_id}/accounts/{account_id}/cooldowns")
+async def master_clear_cooldowns(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.account_clear_cooldowns(account_id), node, "reset limits")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.post("/nodes/{node_id}/accounts/{account_id}/login/start")
+async def master_login_start(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    return await _forward(client.login_start(account_id), node, "start sign-in")
+
+
+@admin_router.post("/nodes/{node_id}/accounts/{account_id}/login/finish")
+async def master_login_finish(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    out = await _forward(client.login_finish(account_id), node, "finish sign-in")
+    await nodes_manager.refresh_node(node)
+    return out
+
+
+@admin_router.post("/nodes/{node_id}/accounts/{account_id}/login/cancel")
+async def master_login_cancel(node_id: str, account_id: str) -> dict:
+    node = _managed_node(node_id)
+    client = nodes_manager.client_for(node)
+    return await _forward(client.login_cancel(account_id), node, "cancel sign-in")
 
 
 # ---- Slave side helper: the node token itself ------------------------------------

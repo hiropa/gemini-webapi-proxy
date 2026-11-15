@@ -9,6 +9,7 @@ import logging
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from gemini_webapi_proxy import __version__
 from gemini_webapi_proxy.client.pool import lifespan
@@ -49,6 +50,24 @@ _ENDPOINTS = {
     "/openai/v1/images/edits": "edit",
     "/openai/v1/videos": "video",
 }
+
+
+@app.middleware("http")
+async def slave_serves_only_its_master(request: Request, call_next):
+    """A slave holds accounts for its master; clients talk to the master."""
+    from gemini_webapi_proxy.config import get_settings
+
+    if get_settings().is_slave and request.url.path.startswith("/openai/"):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": {
+                    "message": "This instance runs in slave mode: its accounts serve its master (docs/nodes.md)",
+                    "type": "slave_mode",
+                }
+            },
+        )
+    return await call_next(request)
 
 
 @app.middleware("http")

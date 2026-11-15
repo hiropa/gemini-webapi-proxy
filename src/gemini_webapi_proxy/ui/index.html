@@ -494,9 +494,15 @@ PAGES.overview = async () => {
 PAGES.accounts = async () => {
   accountsData = await api("GET", "/admin/accounts");
   const list = accountsData.accounts, ok = list.filter((a) => a.state === "ok").length;
-  view().innerHTML = head("Accounts", `${ok} of ${list.length} working`, `<button class="primary" id="add-btn">+ Account</button>`) +
+  const slave = accountsData.mode === "slave";
+  const addBtn = slave ? "" : `<button class="primary" id="add-btn">+ Account</button>`;
+  const banner = slave ? `<div class="card sec"><h2>Slave mode</h2>
+    <p class="muted">This proxy is a slave: its accounts are managed by the master that linked it (its Nodes tab).
+    Adding, changing or removing accounts is done there; here you can only watch the status and finish a sign-in in this machine's browser.
+    All traffic to Google leaves via this machine's own IP.</p></div>` : "";
+  view().innerHTML = head("Accounts", `${ok} of ${list.length} working`, addBtn) + banner +
     `<div class="grid">${list.map((a, i) => accountCard(a, i, list.length)).join("") || `<div class="card empty">No accounts yet. Add the first one.</div>`}</div>`;
-  $("#add-btn").onclick = addAccount;
+  if (!slave) $("#add-btn").onclick = addAccount;
 };
 function accountCard(a, i, n) {
   const [label, cls] = ACC_STATE[a.state] || [a.state, ""];
@@ -512,7 +518,7 @@ function accountCard(a, i, n) {
       ${accountsData.signing_in === a.id ? status("signing in", "warning") : ""}
       ${a.remote ? `<span class="chip" title="This account lives on a linked node">via ${esc(a.remote.node)}</span>` : ""}
       <span class="sp"></span><span class="muted small">priority ${a.priority}</span>
-      ${a.remote ? "" : `<button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Up">↑</button>
+      ${a.remote || accountsData.mode === "slave" ? "" : `<button class="sm" data-act="up" ${i === 0 ? "disabled" : ""} title="Up">↑</button>
       <button class="sm" data-act="down" ${i === n - 1 ? "disabled" : ""} title="Down">↓</button>`}
     </div>
     <div class="acc-meta"><span>requests: ${num(a.requests)}</span>${a.active ? `<span>active now: ${a.active}</span>` : ""}
@@ -520,12 +526,20 @@ function accountCard(a, i, n) {
     ${a.remote ? `<div class="acc-meta"><span class="muted">egress: the node's own address (${esc(a.remote.url)})</span></div>` : `<div class="acc-meta">${egressLine(a)}</div>`}
     ${a.models.length ? `<div class="chips sec">${a.models.map((m) => `<span class="chip">${esc(m)}</span>`).join("")}</div>` : ""}
     ${cds.length ? `<div class="sec row small">${status("cooldown", "warning")}${cds.map(([k, t]) => `<span>${esc(k)} until ${esc(clock(t, true))} (${rel(t)})</span>`).join(" · ")}
-      <button class="sm" data-act="cooldowns">Reset</button></div>` : ""}
+      ${a.remote || accountsData.mode === "slave" ? "" : `<button class="sm" data-act="cooldowns">Reset</button>`}</div>` : ""}
     <div class="sec">${quotaMeters(q)}</div>
     ${a.error ? `<div class="err small sec">${esc(a.error)}</div>` : ""}
     <div class="acc-actions">
-      ${a.remote ? `<button class="primary" data-act="open-node">Sign in on ${esc(a.remote.node)}…</button>
-      <span class="muted small">managed on the node</span>` : `
+      ${a.remote ? `
+      <button class="primary" data-act="open-node">Sign in on ${esc(a.remote.node)}…</button>
+      <button data-act="cookies">Paste cookies</button>
+      <button data-act="check" title="Reconnect to Google and re-read limits">Check</button>
+      <button data-act="toggle">${a.enabled ? "Disable" : "Enable"}</button>
+      <button data-act="rename">Rename</button>
+      <button class="danger" data-act="delete">Delete</button>
+      <span class="muted small">managed over the link — traffic leaves via ${esc(a.remote.url)}</span>` : accountsData.mode === "slave" ? `
+      <button class="primary" data-act="signin">${a.state === "ok" ? "Sign in again" : "Sign in"}</button>
+      <span class="muted small">managed by the master — sign-in happens in this machine's browser</span>` : `
       <button class="primary" data-act="signin">${a.state === "ok" ? "Sign in again" : "Sign in"}</button>
       <button data-act="cookies">Paste cookies</button>
       <button data-act="proxy">Proxy…</button>
@@ -908,6 +922,7 @@ PAGES.nodes = async () => {
       ${x.error ? `<div class="err small sec">${esc(x.error)}</div>` : ""}
       ${x.accounts.length ? `<div class="chips sec">${x.accounts.map((a) => `<span class="chip">${esc(a.name || a.id)} · ${esc(a.state || "?")}</span>`).join("")}</div>` : ""}
       <div class="acc-actions">
+        <button class="sm" data-nact="add-account" title="Create an account on this slave from here">+ Account</button>
         <button class="sm" data-nact="refresh">Refresh</button>
         <button class="sm" data-nact="toggle">${x.enabled ? "Disable" : "Enable"}</button>
         <button class="sm danger" data-nact="remove">Unlink</button>
@@ -918,6 +933,11 @@ PAGES.nodes = async () => {
   };
   view().querySelectorAll("[data-nact]").forEach((b) => (b.onclick = () => {
     const id = b.closest("[data-id]").dataset.id, x = n.nodes.find((y) => y.id === id);
+    if (b.dataset.nact === "add-account") {
+      const name = prompt(`Account name on "${x.name}" — created over the link; sign in there or paste cookies from the Accounts tab`);
+      if (name) return act(() => api("POST", `/admin/nodes/${id}/accounts`, { name }), "Account created on the slave — see the Accounts tab");
+      return;
+    }
     if (b.dataset.nact === "refresh") return act(() => api("POST", `/admin/nodes/${id}/refresh`), "Refreshed");
     if (b.dataset.nact === "toggle") return act(() => api("PATCH", `/admin/nodes/${id}`, { enabled: !x.enabled }));
     if (b.dataset.nact === "remove" && confirm(`Unlink node "${x.name}"? Its accounts leave the pool here; they stay on the node.`))
@@ -1002,7 +1022,8 @@ function addAccount() {
 view().addEventListener("click", (ev) => {
   const btn = ev.target.closest("button[data-act]");
   if (!btn) return;
-  const id = btn.closest("[data-id]").dataset.id, a = accountsData.accounts.find((x) => x.id === id), path = `/admin/accounts/${id}`;
+  const id = btn.closest("[data-id]").dataset.id, a = accountsData.accounts.find((x) => x.id === id);
+  const path = a.remote ? `/admin/nodes/${a.remote.node_id}/accounts/${a.remote.account}` : `/admin/accounts/${id}`;
   switch (btn.dataset.act) {
     case "up": return act(() => swap(id, -1));
     case "down": return act(() => swap(id, 1));
@@ -1017,7 +1038,7 @@ view().addEventListener("click", (ev) => {
       return act(() => api("POST", `${path}/proxy`, { proxy: v }), "Proxy saved and checked. Sign in again to enter through it.");
     }
     case "egress": btn.disabled = true; btn.textContent = "Checking…"; return act(() => api("POST", `${path}/proxy/check`), "Egress checked");
-    case "cookies": cookiesFor = id; $("#cookies-name").textContent = a.name; $("#cookies-input").value = ""; $("#cookies-dlg").showModal(); return;
+    case "cookies": cookiesFor = path; $("#cookies-name").textContent = a.name; $("#cookies-input").value = ""; $("#cookies-dlg").showModal(); return;
     case "signin": return act(() => startSignin(a));
     case "open-node": window.open(a.remote.url + "/admin/ui", "_blank"); return;
   }
@@ -1034,7 +1055,7 @@ $("#signin-cancel").onclick = () => act(async () => {
 $("#signin").addEventListener("cancel", (e) => e.preventDefault());
 $("#cookies-form").onsubmit = (e) => {
   e.preventDefault();
-  act(async () => { await api("POST", `/admin/accounts/${cookiesFor}/cookies`, { cookies: $("#cookies-input").value }); $("#cookies-dlg").close(); }, "Cookies saved");
+  act(async () => { await api("POST", `${cookiesFor}/cookies`, { cookies: $("#cookies-input").value }); $("#cookies-dlg").close(); }, "Cookies saved");
 };
 document.querySelectorAll("dialog [data-close]").forEach((b) => (b.onclick = () => b.closest("dialog").close()));
 $("#secret-copy").onclick = async () => {

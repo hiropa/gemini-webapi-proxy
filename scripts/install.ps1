@@ -35,20 +35,36 @@ function Write-EnvFile([string[]]$Lines) {
     [System.IO.File]::WriteAllText((Join-Path (Get-Location) ".env"), $text, (New-Object System.Text.UTF8Encoding $false))
 }
 
+if (-not $Mode) {
+    $answer = Read-Host "Install this machine as master or slave? [master]"
+    $Mode = if ($answer -and $answer.Trim()) { $answer.Trim().ToLower() } else { "master" }
+    if ($Mode -ne "master" -and $Mode -ne "slave") { Write-Error "Mode must be 'master' or 'slave'" }
+}
+Write-Host "== Mode: $Mode (GOP_MODE in .env; docs/nodes.md)"
+
 $newPassword = ""
+$newNodeToken = ""
 if (-not (Test-Path .env)) {
     $newPassword = New-Secret
+    if ($Mode -eq "slave") { $newNodeToken = "gop-node-$(New-Secret)" }
     $hostValue = if ($Listen) { $Listen } else { "127.0.0.1" }
     $portValue = if ($Port) { $Port } else { 4982 }
-    Write-EnvFile @(
+    $envLines = @(
         "# Written by scripts/install.ps1. All settings: docs/configuration.md",
         "GOP_HOST=$hostValue",
         "GOP_PORT=$portValue",
+        "# master: serves clients and manages accounts; slave: its accounts serve a master",
+        "GOP_MODE=$Mode",
         "# Bearer key for OpenAI clients (master key; named client keys: admin UI -> Keys)",
         "GOP_API_KEY=$(New-Secret)",
         "# Password of the admin UI at /admin/ui",
         "GOP_ADMIN_PASSWORD=$newPassword"
     )
+    if ($newNodeToken) {
+        $envLines += "# Token of this slave's /node API - give it to the master when linking (its Nodes tab)"
+        $envLines += "GOP_NODE_TOKEN=$newNodeToken"
+    }
+    Write-EnvFile $envLines
     # Only the current user may read it: it holds the API key and the admin password.
     icacls .env /inheritance:r /grant:r "$($env:USERNAME):(R,W)" *> $null
     Write-Host "== Created .env (keep it private: it holds the API key and admin password)"
@@ -56,7 +72,14 @@ if (-not (Test-Path .env)) {
     $lines = Get-Content .env
     if ($Listen) { $lines = $lines -replace '^GOP_HOST=.*', "GOP_HOST=$Listen" }
     if ($Port) { $lines = $lines -replace '^GOP_PORT=.*', "GOP_PORT=$Port" }
-    if ($Listen -or $Port) { Write-EnvFile $lines }
+    if ($lines -notmatch '^GOP_MODE=') { $lines += "GOP_MODE=$Mode" }
+    elseif ($PSBoundParameters.ContainsKey('Mode')) { $lines = $lines -replace '^GOP_MODE=.*', "GOP_MODE=$Mode" }
+    if ($Mode -eq "slave" -and $lines -notmatch '^GOP_NODE_TOKEN=') {
+        $newNodeToken = "gop-node-$(New-Secret)"
+        $lines += "# Token of this slave's /node API - give it to the master when linking (its Nodes tab)"
+        $lines += "GOP_NODE_TOKEN=$newNodeToken"
+    }
+    Write-EnvFile $lines
     Write-Host "== Keeping the existing .env"
 }
 
@@ -90,8 +113,22 @@ for ($i = 0; $i -lt 60; $i++) {
             else { Write-Host "  Password:   GOP_ADMIN_PASSWORD in .env" }
             Write-Host "  OpenAI API: http://${shown}:$portSetting/openai/v1   (Bearer: GOP_API_KEY from .env)"
             Write-Host ""
-            Write-Host "Next: open the admin UI, press the sign-in button on the default account and sign"
-            Write-Host "in to Google in the browser shown on the page. Add more accounts with '+'."
+            if ($Mode -eq "slave") {
+                $token = if ($newNodeToken) { $newNodeToken } else { (Get-Content .env | Where-Object { $_ -match '^GOP_NODE_TOKEN=' }) -replace '^GOP_NODE_TOKEN=', '' }
+                Write-Host ""
+                Write-Host "This machine is a SLAVE: it holds accounts for a master and cannot add or"
+                Write-Host "change them itself. From the MASTER's admin UI (Nodes tab) link it with:"
+                Write-Host "  URL:   http://${shown}:$portSetting  (make sure the master can reach it)"
+                Write-Host "  Token: $token"
+                Write-Host "Accounts are then created and managed on the master; their traffic to Google"
+                Write-Host "leaves via this machine's IP only."
+            } else {
+                Write-Host ""
+                Write-Host "Next: open the admin UI, press the sign-in button on the default account and sign"
+                Write-Host "in to Google in the browser shown on the page. Add more accounts with '+'."
+                Write-Host "To use another machine's accounts from here, install a slave there and link it"
+                Write-Host "in the Nodes tab (docs/nodes.md)."
+            }
             exit 0
         }
     } catch { }

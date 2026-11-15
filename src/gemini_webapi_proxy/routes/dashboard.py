@@ -238,6 +238,7 @@ async def system() -> dict:
         "vnc": vnc,
         "journal_records": len(journal.records),
         "settings": {
+            "mode": settings.mode,
             "cookie_source": settings.cookie_source,
             "cdp_url": settings.cdp_url,
             "vnc_url": settings.vnc_url,

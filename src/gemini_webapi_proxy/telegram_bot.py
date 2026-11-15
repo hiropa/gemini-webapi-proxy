@@ -450,7 +450,9 @@ class TelegramBot:
         if slot is not None:
             from gemini_webapi_proxy.config import get_settings
 
-            if action == "t":
+            if get_settings().is_slave:
+                note = "slave mode — accounts are managed by the master"
+            elif action == "t":
                 if slot.is_remote:
                     note = f"remote — manage on node {slot.node.name}"
                 else:

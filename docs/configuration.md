@@ -43,7 +43,8 @@ source and a worked example of exporting a `cookies.txt`.
 |----------|---------|-------------|
 | `GOP_HTTP_PROXY` | _(empty)_ | Local HTTP proxy (e.g. `http://127.0.0.1:7897`). |
 | `GOP_CDN_DIRECT` | `true` | When true, Google CDN domains (`googleusercontent.com`) bypass the proxy to avoid MITM 403 errors. |
-| `GOP_NODE_TOKEN` | _(empty)_ | Token guarding this instance's `/node/*` slave API when linked from a master. Empty = disabled (the admin UI can generate one into `<data_dir>/node_token.txt`). See [docs/nodes.md](nodes.md). |
+| `GOP_MODE` | `master` | `master`: serves clients and manages all accounts (its own and linked slaves'). `slave`: holds accounts for a master — no local account management, no `/openai/v1`, and Google traffic always leaves via this machine's own address. See [docs/nodes.md](nodes.md). |
+| `GOP_NODE_TOKEN` | _(empty)_ | Token guarding this instance's `/node/*` slave API when linked from a master. Empty = disabled (the admin UI can generate one into `<data_dir>/node_token.txt`; a slave generates one at startup). See [docs/nodes.md](nodes.md). |
 | `GOP_NODE_REFRESH_INTERVAL` | `30` | Seconds between re-reading each linked node's account list (master side). |
 
 ## Timeouts

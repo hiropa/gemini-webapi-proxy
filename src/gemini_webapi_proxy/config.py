@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "console"
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
+    # -- Deployment mode ----------------------------------------------------
+    # master: serves clients, manages accounts (its own and its slaves').
+    # slave:  holds accounts but manages nothing by itself — the master drives
+    # every account change over the node API, and all traffic to Google leaves
+    # via this machine's own address (see docs/nodes.md).
+    mode: Literal["master", "slave"] = "master"
+
     # -- Auth -------------------------------------------------------------
     # When api_key is set (non-empty), Authorization: Bearer <api_key> is
     # required.  When empty (default), authentication is bypassed for
@@ -143,6 +150,10 @@ class Settings(BaseSettings):
     downloader_timeout: float = 120.0
 
     # ------------------------------------------------------------------ API
+    @property
+    def is_slave(self) -> bool:
+        return self.mode == "slave"
+
     @property
     def registry_path(self) -> Path:
         return self.data_dir / self.registry_file
