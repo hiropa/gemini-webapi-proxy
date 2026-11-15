@@ -230,6 +230,26 @@ def test_gallery_keeps_images(app_client, tmp_path):
     assert app_client.get("/admin/gallery", headers=AUTH).json()["images"] == []
 
 
+def test_gallery_tags_node_and_skips_copies_when_forwarding(app_client):
+    from gemini_webapi_proxy.services import gallery
+
+    settings = get_settings()
+    png = base64.b64encode(b"\x89PNG fake").decode()
+    token = stats.current.set(
+        {"ts": time.time(), "account": "box1::acc-a", "model": "gemini-flash"}
+    )
+    try:
+        names = gallery.save_to_gallery(settings, [png], prompt="remote cat")
+    finally:
+        stats.current.reset(token)
+    assert len(names) == 1
+    items = app_client.get("/admin/gallery", headers=AUTH).json()["images"]
+    assert items[0]["node"] == "box1"  # node id as the label when not linked
+    with gallery.forwarding():
+        assert gallery.save_to_gallery(settings, [png], prompt="no local copy") == []
+    assert len(app_client.get("/admin/gallery", headers=AUTH).json()["images"]) == 1
+
+
 def test_playground_video_job_runs_on_the_pinned_account(app_client):
     r = app_client.post(
         "/admin/playground", headers=AUTH, json={"prompt": "a cat", "mode": "video", "account": "b"}

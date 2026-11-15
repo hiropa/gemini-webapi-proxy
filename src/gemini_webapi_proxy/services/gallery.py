@@ -8,16 +8,33 @@ with the prompt next to it, so a generation can be looked at afterwards.
 from __future__ import annotations
 
 import base64
+import contextvars
 import json
 import logging
 import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from gemini_webapi_proxy.config import Settings
 from gemini_webapi_proxy.stats import current
 
 log = logging.getLogger(__name__)
+
+# While a slave serves a master-driven generation (``/node/generate``) the media
+# belongs to the master: nothing is written to the local gallery.
+_forwarding = contextvars.ContextVar("gallery_forwarding", default=False)
+
+
+@contextmanager
+def forwarding() -> Iterator[None]:
+    """Suppress local gallery writes: the master stores the media, not this node."""
+    token = _forwarding.set(True)
+    try:
+        yield
+    finally:
+        _forwarding.reset(token)
 
 
 def gallery_dir(settings: Settings) -> Path:
@@ -32,10 +49,21 @@ def _ext(data: bytes) -> str:
     return "jpg"
 
 
+def _node_of(account: str | None) -> str | None:
+    """The slave node name for a remote slot id (``<node>::<account>``), if any."""
+    if not account or "::" not in account:
+        return None
+    node_id = account.split("::", 1)[0]
+    from gemini_webapi_proxy.client.nodes import nodes as nodes_manager
+
+    node = nodes_manager.store.get(node_id) if nodes_manager.store else None
+    return (node.name if node else None) or node_id
+
+
 def save_to_gallery(settings: Settings, images: list[str], *, prompt: str) -> list[str]:
     """Keep a copy of the images; returns their gallery names."""
     saved: list[str] = []
-    if settings.image_keep_hours <= 0 or not images:
+    if _forwarding.get() or settings.image_keep_hours <= 0 or not images:
         return saved
     folder = gallery_dir(settings)
     try:
@@ -47,6 +75,7 @@ def save_to_gallery(settings: Settings, images: list[str], *, prompt: str) -> li
             "model": record.get("model"),
             "account": record.get("account"),
             "key": record.get("key"),
+            "node": _node_of(record.get("account")),
         }
         for b64 in images:
             data = base64.b64decode(b64)

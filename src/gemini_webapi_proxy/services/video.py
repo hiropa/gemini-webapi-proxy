@@ -98,6 +98,13 @@ def list_jobs() -> list[VideoJob]:
     return sorted(_jobs.values(), key=lambda j: j.created_at, reverse=True)
 
 
+def drop_job(job_id: str) -> None:
+    """Forget a job (and its file, if any) — e.g. a slave after the master fetched it."""
+    job = _jobs.pop(job_id, None)
+    if job and job.path:
+        job.path.unlink(missing_ok=True)
+
+
 def classify(text: str, *, videos: int, images: int) -> str:
     """Map a Gemini answer to completed / limit / glitch / refused."""
     if videos:

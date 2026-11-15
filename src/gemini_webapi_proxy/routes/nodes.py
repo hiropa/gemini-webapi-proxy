@@ -38,7 +38,7 @@ from gemini_webapi_proxy.client.pool import pinned, pool, registry
 from gemini_webapi_proxy.config import get_settings
 from gemini_webapi_proxy.downloaders.chain import generated_image_to_b64
 from gemini_webapi_proxy.errors import NoAccountError, QuotaExceededError, UpstreamRefusalError
-from gemini_webapi_proxy.services import video
+from gemini_webapi_proxy.services import gallery, video
 from gemini_webapi_proxy.services.chat import (
     _quota_message,
     _remove_refs,
@@ -175,11 +175,14 @@ async def node_generate(body: NodeGenerateIn):
         return _err(404, "no_account", f"no local account {body.account!r}")
     token = pinned.set(body.account)
     try:
-        if body.mode == "video":
-            return await _node_video(settings, body)
-        if body.mode == "image":
-            return await _node_image(settings, body)
-        return await _node_chat(settings, body)
+        # Master-driven generations keep no local copy: the master's gallery is
+        # the single place the media lives (docs/nodes.md).
+        with gallery.forwarding():
+            if body.mode == "video":
+                return await _node_video(settings, body)
+            if body.mode == "image":
+                return await _node_image(settings, body)
+            return await _node_chat(settings, body)
     except QuotaExceededError as exc:
         slot = pool.slots.get(body.account)
         reset = max(slot.cooldowns.values()) if slot and slot.cooldowns else None
@@ -217,6 +220,18 @@ async def node_job_content(job_id: str):
     if job.status != "completed" or not job.path or not job.path.exists():
         raise HTTPException(status_code=409, detail=f"video {job_id} is {job.status}")
     return FileResponse(job.path, media_type="video/mp4", filename=f"{job.id}.mp4")
+
+
+@router.delete("/jobs/{job_id}", dependencies=[Depends(require_node_token)])
+async def node_job_delete(job_id: str) -> dict:
+    """Drop a finished job and its file: the master has downloaded the mp4."""
+    job = video.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"video {job_id} not found")
+    if job.path:
+        job.path.unlink(missing_ok=True)
+    video.drop_job(job_id)
+    return {"ok": True}
 
 
 # ---- Master side: manage linked slaves -----------------------------------------

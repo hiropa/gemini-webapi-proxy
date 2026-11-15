@@ -269,6 +269,13 @@ class NodeClient:
             raise NodeError(resp.status_code, "error", resp.text[:300])
         return resp.content
 
+    async def job_delete(self, job_id: str) -> None:
+        """Tell the slave to drop the job: the master now holds the only copy."""
+        try:
+            await self._call("DELETE", f"/node/jobs/{job_id}")
+        except Exception as exc:
+            log.info("node %s: job %s not dropped (%s)", self.node.id, job_id, exc)
+
 
 # ---- The remote "Gemini client": forwards generate_content to the slave -------
 class RemoteModel:
@@ -306,6 +313,7 @@ class RemoteVideo:
         out.mkdir(parents=True, exist_ok=True)
         target = out / f"{filename}.mp4"
         target.write_bytes(data)
+        await self.http.job_delete(self.job_id)
         return {"video": str(target)}
 
 

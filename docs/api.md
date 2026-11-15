@@ -170,7 +170,7 @@ kind of account:
 
 - Jobs run one at a time.
 - A failed job is never retried automatically: re-sending a prompt burns the video limit.
-- Jobs and files are kept for `GOP_VIDEO_KEEP_HOURS` (24 h). The job list lives in
+- Jobs and files are kept for `GOP_VIDEO_KEEP_HOURS` (default: 90 days). The job list lives in
   memory: a restart forgets running and finished jobs.
 
 ## Quota

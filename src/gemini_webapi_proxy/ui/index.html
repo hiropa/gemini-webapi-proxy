@@ -796,7 +796,7 @@ async function followVideo(id, reply) {
 PAGES.media = async () => {
   const [v, g] = await Promise.all([api("GET", "/admin/videos"), api("GET", "/admin/gallery")]);
   const vstat = { completed: ["done", "good"], failed: ["error", "critical"], in_progress: ["rendering", "warning"], queued: ["queued", ""] };
-  view().innerHTML = head("Media", "videos and images are kept 24 h") + `
+  view().innerHTML = head("Media", "videos and images are kept 90 days") + `
     <div class="card"><h2>Videos <span class="muted small">${v.videos.length}</span></h2>
       ${v.videos.length ? `<div class="videos">${v.videos.map((j) => `<div>
         ${j.status === "completed" && j.has_file ? `<video controls preload="metadata" src="/admin/videos/${esc(j.id)}/content"></video>` : ""}
@@ -805,18 +805,34 @@ PAGES.media = async () => {
         <div class="small fg2" style="margin-top:4px">${esc(j.prompt.slice(0, 200))}</div>
         ${j.error ? `<div class="small err">${esc(j.error.message.slice(0, 200))}</div>` : ""}</div>`).join("")}</div>` : `<div class="empty">No videos</div>`}
     </div>
-    <div class="card sec"><h2>Images <span class="muted small">${g.images.length}</span></h2>
-      ${g.images.length ? `<div class="gallery">${g.images.map((im, i) => `<figure data-i="${i}">
-        <img loading="lazy" src="/admin/gallery/${encodeURIComponent(im.name)}" alt="">
-        <figcaption title="${esc(im.prompt)}">${esc(im.prompt || im.name)}</figcaption></figure>`).join("")}</div>` : `<div class="empty">No images</div>`}
+    <div class="card sec"><h2>Images <span class="muted small" id="img-count"></span></h2>
+      <div class="chips" id="img-tabs" style="margin-bottom:10px"></div>
+      <div id="img-grid"></div>
     </div>`;
-  view().querySelectorAll(".gallery figure").forEach((f) => (f.onclick = () => {
-    const im = g.images[+f.dataset.i], url = `/admin/gallery/${encodeURIComponent(im.name)}`;
-    lightboxName = im.name;
-    $("#lb-img").src = url; $("#lb-open").href = url; $("#lb-prompt").textContent = im.prompt || "";
-    $("#lb-meta").textContent = [clock(im.ts, true), im.model, im.account, im.key, bytes(im.size)].filter(Boolean).join(" · ");
-    $("#lightbox").showModal();
-  }));
+  const nodes = [...new Set(g.images.map((im) => im.node).filter(Boolean))];
+  const tabs = ["all", "local", ...nodes];
+  const tabLabel = (t) => t === "all" ? "All" : t === "local" ? "This machine" : t;
+  let imgTab = "all";
+  const shown = () => g.images.filter((im) => imgTab === "all" ? true : imgTab === "local" ? !im.node : im.node === imgTab);
+  const renderTabs = () => ($("#img-tabs").innerHTML = tabs.map((t) =>
+    `<button class="chip" data-tab="${esc(t)}" style="cursor:pointer;border:0;font:inherit;${t === imgTab ? "font-weight:700" : "opacity:.6"}">${esc(tabLabel(t))}</button>`).join(""));
+  const renderImages = () => {
+    const imgs = shown();
+    $("#img-count").textContent = imgs.length;
+    $("#img-grid").innerHTML = imgs.length ? `<div class="gallery">${imgs.map((im) => `<figure data-name="${esc(im.name)}">
+      <img loading="lazy" src="/admin/gallery/${encodeURIComponent(im.name)}" alt="">
+      <figcaption title="${esc(im.prompt)}">${esc(im.prompt || im.name)}</figcaption></figure>`).join("")}</div>` : `<div class="empty">No images</div>`;
+    $("#img-grid").querySelectorAll(".gallery figure").forEach((f) => (f.onclick = () => {
+      const im = imgs.find((x) => x.name === f.dataset.name), url = `/admin/gallery/${encodeURIComponent(im.name)}`;
+      lightboxName = im.name;
+      $("#lb-img").src = url; $("#lb-open").href = url; $("#lb-prompt").textContent = im.prompt || "";
+      $("#lb-meta").textContent = [clock(im.ts, true), im.model, im.account, im.node, im.key, bytes(im.size)].filter(Boolean).join(" · ");
+      $("#lightbox").showModal();
+    }));
+  };
+  renderTabs();
+  renderImages();
+  $("#img-tabs").querySelectorAll("button").forEach((b) => (b.onclick = () => { imgTab = b.dataset.tab; renderTabs(); renderImages(); }));
 };
 
 PAGES.telegram = async () => {

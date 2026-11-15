@@ -36,6 +36,11 @@ client ──► master :4982 ──/node/* (Bearer node token, https)──► 
 - **Sign-in** still happens on the slave itself (its own admin UI / browser). On the
   master's Accounts tab, remote accounts show a `via <node>` chip and a button that
   opens the slave's admin UI; they can't be edited from the master.
+- **Media**: everything generated on a slave for the master is stored **only on the
+  master** — images land in its media gallery (tagged with the node, browsable per
+  slave in the **Media** tab) and videos are downloaded as mp4, after which the slave
+  drops its copy (`DELETE /node/jobs/{id}`). A slave keeps no gallery copies of
+  master-driven generations.
 
 ## Setup
 

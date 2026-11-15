@@ -70,7 +70,9 @@ source and a worked example of exporting a `cookies.txt`.
 |----------|---------|-------------|
 | `GOP_DATA_DIR` | `./data` | Where the model registry file lives. |
 | `GOP_REGISTRY_FILE` | `model_registry.json` | File name within `GOP_DATA_DIR`. |
-| `GOP_VIDEO_KEEP_HOURS` | `24` | Finished videos (`GOP_DATA_DIR/videos/*.mp4`) and their jobs are dropped after this many hours. |
+| `GOP_VIDEO_KEEP_HOURS` | `2160` | Finished videos (`GOP_DATA_DIR/videos/*.mp4`) and their jobs are dropped after this many hours (default: 90 days). |
+| `GOP_IMAGE_KEEP_HOURS` | `2160` | How long generated images are kept in the admin UI's media gallery (`GOP_DATA_DIR/images`, default: 90 days; `0` = keep none). |
+| `GOP_IMAGE_KEEP_MAX` | `200` | At most this many images are kept in the gallery. |
 | `GEMINI_COOKIE_PATH` | _(temp dir)_ | Read by `gemini-webapi`, not by the proxy: where rotated cookies are cached. Point it into a persistent volume (with `cdp` too: after the hand-over only the proxy has the current cookies) (the compose file uses `/app/data/cookie-cache`). Otherwise a restart can fall back to the original, already rotated `__Secure-1PSIDTS`, the session turns into a logged-out guest and only `gemini-flash-lite` is listed. |
 
 ## Accounts

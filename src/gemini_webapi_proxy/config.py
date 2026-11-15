@@ -95,9 +95,9 @@ class Settings(BaseSettings):
     image_timeout: float = 300.0
     # Veo clips take minutes; the job runs in the background, this caps one job.
     video_timeout: float = 900.0
-    video_keep_hours: float = 24.0
+    video_keep_hours: float = 2160.0  # 90 days
     # Generated images kept for the admin UI's gallery (0 = keep none).
-    image_keep_hours: float = 24.0
+    image_keep_hours: float = 2160.0  # 90 days
     image_keep_max: int = 200
     init_timeout: float = 120.0
     # An account whose quota ran out is skipped until the reset time Gemini reported,
