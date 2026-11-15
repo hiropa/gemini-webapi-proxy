@@ -152,7 +152,13 @@ async def models() -> dict:
 async def videos() -> dict:
     return {
         "videos": [
-            {**j.to_openai(), "account": j.account, "key": j.key, "has_file": bool(j.path)}
+            {
+                **j.to_openai(),
+                "account": j.account,
+                "node": j.node,
+                "key": j.key,
+                "has_file": bool(j.path),
+            }
             for j in video.list_jobs()
         ]
     }
@@ -238,6 +244,7 @@ async def system() -> dict:
         "vnc": vnc,
         "journal_records": len(journal.records),
         "settings": {
+            "mode": settings.mode,
             "cookie_source": settings.cookie_source,
             "cdp_url": settings.cdp_url,
             "vnc_url": settings.vnc_url,

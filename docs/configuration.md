@@ -43,7 +43,8 @@ source and a worked example of exporting a `cookies.txt`.
 |----------|---------|-------------|
 | `GOP_HTTP_PROXY` | _(empty)_ | Local HTTP proxy (e.g. `http://127.0.0.1:7897`). |
 | `GOP_CDN_DIRECT` | `true` | When true, Google CDN domains (`googleusercontent.com`) bypass the proxy to avoid MITM 403 errors. |
-| `GOP_NODE_TOKEN` | _(empty)_ | Token guarding this instance's `/node/*` slave API when linked from a master. Empty = disabled (the admin UI can generate one into `<data_dir>/node_token.txt`). See [docs/nodes.md](nodes.md). |
+| `GOP_MODE` | `master` | `master`: serves clients and manages all accounts (its own and linked slaves'). `slave`: holds accounts for a master — no local account management, no `/openai/v1`, and Google traffic always leaves via this machine's own address. See [docs/nodes.md](nodes.md). |
+| `GOP_NODE_TOKEN` | _(empty)_ | Token guarding this instance's `/node/*` slave API when linked from a master. Empty = disabled (the admin UI can generate one into `<data_dir>/node_token.txt`; a slave generates one at startup). See [docs/nodes.md](nodes.md). |
 | `GOP_NODE_REFRESH_INTERVAL` | `30` | Seconds between re-reading each linked node's account list (master side). |
 
 ## Timeouts
@@ -70,7 +71,8 @@ source and a worked example of exporting a `cookies.txt`.
 |----------|---------|-------------|
 | `GOP_DATA_DIR` | `./data` | Where the model registry file lives. |
 | `GOP_REGISTRY_FILE` | `model_registry.json` | File name within `GOP_DATA_DIR`. |
-| `GOP_VIDEO_KEEP_HOURS` | `24` | Finished videos (`GOP_DATA_DIR/videos/*.mp4`) and their jobs are dropped after this many hours. |
+| `GOP_VIDEO_KEEP_HOURS` | `2160` (90 days) | Finished videos (`GOP_DATA_DIR/videos/*.mp4`) and their jobs are dropped after this many hours. On a slave this is only a fallback: its videos are handed to the master, which deletes the slave's copy right after the download. |
+| `GOP_IMAGE_KEEP_HOURS` | `2160` (90 days) | Generated images kept for the admin UI's gallery (`GOP_DATA_DIR/images`); 0 = keep none. A slave keeps none at all — its images are stored on its master (see docs/nodes.md). |
 | `GEMINI_COOKIE_PATH` | _(temp dir)_ | Read by `gemini-webapi`, not by the proxy: where rotated cookies are cached. Point it into a persistent volume (with `cdp` too: after the hand-over only the proxy has the current cookies) (the compose file uses `/app/data/cookie-cache`). Otherwise a restart can fall back to the original, already rotated `__Secure-1PSIDTS`, the session turns into a logged-out guest and only `gemini-flash-lite` is listed. |
 
 ## Accounts

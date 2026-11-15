@@ -262,12 +262,46 @@ class NodeClient:
     async def job(self, job_id: str) -> dict:
         return await self._call("GET", f"/node/jobs/{job_id}")
 
+    # ---- Account management over the link (the master drives a slave's accounts)
+    async def account_add(self, name: str) -> dict:
+        return await self._call("POST", "/node/accounts", json={"name": name})
+
+    async def account_update(self, account_id: str, changes: dict) -> dict:
+        return await self._call("PATCH", f"/node/accounts/{account_id}", json=changes)
+
+    async def account_delete(self, account_id: str) -> dict:
+        return await self._call("DELETE", f"/node/accounts/{account_id}")
+
+    async def account_cookies(self, account_id: str, cookies: str) -> dict:
+        return await self._call(
+            "POST", f"/node/accounts/{account_id}/cookies", json={"cookies": cookies}
+        )
+
+    async def account_check(self, account_id: str) -> dict:
+        return await self._call("POST", f"/node/accounts/{account_id}/check")
+
+    async def account_clear_cooldowns(self, account_id: str) -> dict:
+        return await self._call("DELETE", f"/node/accounts/{account_id}/cooldowns")
+
+    async def login_start(self, account_id: str) -> dict:
+        return await self._call("POST", f"/node/accounts/{account_id}/login/start")
+
+    async def login_finish(self, account_id: str) -> dict:
+        return await self._call("POST", f"/node/accounts/{account_id}/login/finish")
+
+    async def login_cancel(self, account_id: str) -> dict:
+        return await self._call("POST", f"/node/accounts/{account_id}/login/cancel")
+
     async def job_content(self, job_id: str) -> bytes:
         http = await self._client()
         resp = await http.get(f"/node/jobs/{job_id}/content", timeout=300.0)
         if resp.status_code >= 400:
             raise NodeError(resp.status_code, "error", resp.text[:300])
         return resp.content
+
+    async def job_delete(self, job_id: str) -> dict:
+        """Tell the slave the mp4 was fetched: it keeps no copy (docs/nodes.md)."""
+        return await self._call("DELETE", f"/node/jobs/{job_id}")
 
 
 # ---- The remote "Gemini client": forwards generate_content to the slave -------
@@ -306,6 +340,11 @@ class RemoteVideo:
         out.mkdir(parents=True, exist_ok=True)
         target = out / f"{filename}.mp4"
         target.write_bytes(data)
+        # The master now holds the only copy; the slave deletes its file.
+        try:
+            await self.http.job_delete(self.job_id)
+        except Exception as exc:  # best effort: the slave's cleanup is the fallback
+            log.warning("node %s: video handoff delete failed: %s", self.http.node.id, exc)
         return {"video": str(target)}
 
 

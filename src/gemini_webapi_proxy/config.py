@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     log_format: Literal["json", "console"] = "console"
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
+    # -- Deployment mode ----------------------------------------------------
+    # master: serves clients, manages accounts (its own and its slaves').
+    # slave:  holds accounts but manages nothing by itself — the master drives
+    # every account change over the node API, and all traffic to Google leaves
+    # via this machine's own address (see docs/nodes.md).
+    mode: Literal["master", "slave"] = "master"
+
     # -- Auth -------------------------------------------------------------
     # When api_key is set (non-empty), Authorization: Bearer <api_key> is
     # required.  When empty (default), authentication is bypassed for
@@ -95,9 +102,9 @@ class Settings(BaseSettings):
     image_timeout: float = 300.0
     # Veo clips take minutes; the job runs in the background, this caps one job.
     video_timeout: float = 900.0
-    video_keep_hours: float = 24.0
-    # Generated images kept for the admin UI's gallery (0 = keep none).
-    image_keep_hours: float = 24.0
+    # Media is kept for the admin UI for 90 days by default (0 = keep none).
+    video_keep_hours: float = 90 * 24.0
+    image_keep_hours: float = 90 * 24.0
     image_keep_max: int = 200
     init_timeout: float = 120.0
     # An account whose quota ran out is skipped until the reset time Gemini reported,
@@ -143,6 +150,10 @@ class Settings(BaseSettings):
     downloader_timeout: float = 120.0
 
     # ------------------------------------------------------------------ API
+    @property
+    def is_slave(self) -> bool:
+        return self.mode == "slave"
+
     @property
     def registry_path(self) -> Path:
         return self.data_dir / self.registry_file

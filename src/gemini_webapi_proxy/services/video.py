@@ -68,6 +68,7 @@ class VideoJob:
     error: dict[str, str] | None = None
     text: str = ""
     account: str | None = None
+    node: str | None = None  # set when the account lives on a linked slave
     key: str | None = None  # client key that queued it, for the request journal
 
     def to_openai(self) -> dict[str, Any]:
@@ -92,6 +93,14 @@ _lock = asyncio.Lock()
 
 def get_job(job_id: str) -> VideoJob | None:
     return _jobs.get(job_id)
+
+
+def delete_job(job_id: str) -> bool:
+    """Forget a job and its file; False when there was no such job."""
+    job = _jobs.pop(job_id, None)
+    if job is not None and job.path:
+        job.path.unlink(missing_ok=True)
+    return job is not None
 
 
 def list_jobs() -> list[VideoJob]:
@@ -139,7 +148,10 @@ def _patient_stream(client: Any, seconds: float) -> Iterator[None]:
 
 
 def _cleanup(settings: Settings) -> None:
-    cutoff = time.time() - settings.video_keep_hours * 3600
+    # A slave hands its videos to the master, which deletes them here right after
+    # the download; this is only the fallback for a handoff that never happened.
+    keep = settings.video_keep_hours if not settings.is_slave else 1.0
+    cutoff = time.time() - keep * 3600
     for job_id, job in list(_jobs.items()):
         if job.created_at < cutoff:
             if job.path:
@@ -209,6 +221,7 @@ async def _run_job(settings: Settings, job: VideoJob) -> None:
                 client.request_mode = "video"
             slot = pool.slot_of(client)
             job.account = slot.id if slot else None
+            job.node = slot.node.name if slot is not None and slot.is_remote else None
             sanitize_gemini_client_cookies(client)
             with _patient_stream(client, settings.video_timeout):
                 output = await asyncio.wait_for(

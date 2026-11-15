@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from types import SimpleNamespace
 
@@ -133,6 +134,7 @@ class FakeNodeTransport:
     def __init__(self) -> None:
         self.mode = "ok"  # ok | quota | down
         self.calls: list[tuple[str, dict]] = []
+        self.node_accounts: dict[str, dict] = {}
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -146,7 +148,7 @@ class FakeNodeTransport:
             raise httpx.ConnectError("refused")
         if path == "/node/ping":
             return httpx.Response(200, json={"ok": True, "version": "0.1.0"})
-        if path == "/node/accounts":
+        if path == "/node/accounts" and request.method == "GET":
             return httpx.Response(
                 200,
                 json={
@@ -163,6 +165,47 @@ class FakeNodeTransport:
                         }
                     ]
                 },
+            )
+        if path == "/node/accounts" and request.method == "POST":
+            name = body.get("name") or "acc"
+            self.node_accounts[name] = {
+                "id": name,
+                "name": name,
+                "enabled": True,
+                "priority": 0,
+                "state": "idle",
+                "models": [],
+                "quota": None,
+                "error": None,
+            }
+            return httpx.Response(200, json=self.node_accounts[name])
+        m = re.match(
+            r"^/node/accounts/([^/]+)(/cookies|/check|/cooldowns|/login/start|/login/finish|/login/cancel)?$",
+            path,
+        )
+        if m:
+            acc = self.node_accounts.setdefault(
+                m.group(1),
+                {
+                    "id": m.group(1),
+                    "name": m.group(1),
+                    "enabled": True,
+                    "priority": 0,
+                    "state": "ok",
+                    "models": ["gemini-flash"],
+                    "quota": None,
+                    "error": None,
+                },
+            )
+            tail = m.group(2) or ""
+            if request.method == "PATCH":
+                acc.update({k: v for k, v in body.items() if k in ("name", "enabled", "priority")})
+            elif request.method == "DELETE" and not tail:
+                self.node_accounts.pop(m.group(1), None)
+            elif tail in {"/cookies", "/check"}:
+                acc["state"] = "ok"
+            return httpx.Response(
+                200, json=acc if m.group(1) in self.node_accounts else {"ok": True}
             )
         if path == "/node/generate":
             if self.mode == "quota":
@@ -383,3 +426,232 @@ def test_node_token_endpoints(monkeypatch, tmp_path):
     from gemini_webapi_proxy.client.nodes import effective_node_token
 
     assert effective_node_token(get_settings()) == "env-token"
+
+
+# ---- Modes -----------------------------------------------------------------------
+def test_mode_setting(monkeypatch):
+    from gemini_webapi_proxy.config import Settings
+
+    monkeypatch.delenv("GOP_MODE", raising=False)
+    assert Settings().mode == "master" and not Settings().is_slave
+    monkeypatch.setenv("GOP_MODE", "slave")
+    assert Settings().mode == "slave" and Settings().is_slave
+
+
+def test_slave_egress_is_always_direct(monkeypatch):
+    """Slave mode: proxies are ignored so Google traffic leaves via the slave IP."""
+    from gemini_webapi_proxy.client.accounts import Account
+    from gemini_webapi_proxy.client.pool import outbound_proxy
+    from gemini_webapi_proxy.config import Settings
+
+    account = Account(id="a", name="a", proxy="socks5://127.0.0.1:1080")
+    monkeypatch.setenv("GOP_HTTP_PROXY", "http://127.0.0.1:8118")
+    monkeypatch.setenv("GOP_MODE", "slave")
+    assert outbound_proxy(Settings(), account) is None
+    monkeypatch.setenv("GOP_MODE", "master")
+    assert outbound_proxy(Settings(), account) == "socks5://127.0.0.1:1080"
+
+
+@pytest.fixture
+def slave_mode(monkeypatch):
+    """A slave-mode instance: node token set, one account, fake Gemini client."""
+    monkeypatch.setenv("GOP_NODE_TOKEN", "node-secret")
+    monkeypatch.setenv("GOP_MODE", "slave")
+    monkeypatch.setenv("GOP_ADMIN_PASSWORD", "pw")
+    monkeypatch.setenv("GOP_API_KEY", "pw")
+    reset_settings_cache()
+    settings = get_settings()
+    store = AccountStore(settings.data_dir / "accounts.json")
+    store.remove("default")
+    store.add("free")
+    store.set_cookies("free", {"__Secure-1PSID": "sid"}, None)
+
+    async def fake_new_client(settings, account):
+        return FakeClient(account.id)
+
+    monkeypatch.setattr(pool_module, "_new_client", fake_new_client)
+    monkeypatch.setattr(pool_module, "registry", pool_module.ModelRegistry())
+    fresh = pool_module.AccountPool()
+    monkeypatch.setattr(pool_module, "pool", fresh)
+    from gemini_webapi_proxy.routes import accounts as accounts_route
+    from gemini_webapi_proxy.routes import nodes as nodes_route
+    from gemini_webapi_proxy.services import account_ops
+
+    for mod in (accounts_route, nodes_route, account_ops):
+        monkeypatch.setattr(mod, "pool", fresh)
+    from gemini_webapi_proxy.app import app
+
+    client = TestClient(app)
+    return client, settings
+
+
+def test_slave_mode_blocks_local_account_management(slave_mode):
+    """A slave cannot add or change accounts itself; the master does over the link."""
+    client, _settings = slave_mode
+    admin = {"Authorization": "Bearer pw"}
+    assert client.get("/admin/accounts", headers=admin).json()["mode"] == "slave"
+    r = client.post("/admin/accounts", headers=admin, json={"name": "new"})
+    assert r.status_code == 403 and "master" in r.json()["detail"]
+    assert (
+        client.patch("/admin/accounts/free", headers=admin, json={"enabled": False}).status_code
+        == 403
+    )
+    assert client.delete("/admin/accounts/free", headers=admin).status_code == 403
+    assert (
+        client.post(
+            "/admin/accounts/free/cookies", headers=admin, json={"cookies": "x=y"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            "/admin/accounts/free/proxy", headers=admin, json={"proxy": "http://x"}
+        ).status_code
+        == 403
+    )
+    # the account list is still readable (status only)
+    assert client.get("/admin/accounts", headers=admin).status_code == 200
+
+
+def test_slave_mode_serves_no_clients(slave_mode):
+    client, _ = slave_mode
+    assert client.get("/openai/v1/models").status_code == 403
+
+
+def test_node_account_management_over_the_link(slave_mode):
+    """The master drives a slave's accounts through /node/accounts*."""
+    client, _ = slave_mode
+    r = client.post("/node/accounts", headers=NODE, json={"name": "pro"})
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == "pro"
+    r = client.patch("/node/accounts/pro", headers=NODE, json={"enabled": False})
+    assert r.status_code == 200 and r.json()["enabled"] is False
+    client.patch("/node/accounts/pro", headers=NODE, json={"enabled": True})
+    r = client.post(
+        "/node/accounts/pro/cookies", headers=NODE, json={"cookies": "__Secure-1PSID=sid2; other=1"}
+    )
+    assert r.status_code == 200
+    r = client.post("/node/accounts/pro/check", headers=NODE)
+    assert r.status_code == 200 and r.json()["state"] == "ok"
+    ids = [a["id"] for a in client.get("/node/accounts", headers=NODE).json()["accounts"]]
+    assert "pro" in ids
+    assert client.delete("/node/accounts/pro", headers=NODE).status_code == 200
+    ids = [a["id"] for a in client.get("/node/accounts", headers=NODE).json()["accounts"]]
+    assert "pro" not in ids
+    # without the token nothing is manageable
+    assert client.post("/node/accounts", json={"name": "x"}).status_code == 401
+
+
+async def test_master_manages_slave_accounts(master):
+    """The master forwards account changes to the slave and re-reads its list."""
+    settings, node, transport = master
+    await nodes_manager.refresh_node(node)
+    pool_module.pool.configure(settings)
+    from gemini_webapi_proxy.app import app
+
+    client = TestClient(app)
+    r = client.post("/admin/nodes/slave/accounts", json={"name": "pro"})
+    assert r.status_code == 200, r.text
+    assert transport.calls[-1][0] == "/node/accounts"
+    r = client.patch("/admin/nodes/slave/accounts/pro", json={"enabled": False})
+    assert r.status_code == 200 and r.json()["enabled"] is False
+    r = client.post("/admin/nodes/slave/accounts/pro/cookies", json={"cookies": "__Secure-1PSID=s"})
+    assert r.status_code == 200
+    assert client.post("/admin/nodes/slave/accounts/pro/check").status_code == 200
+    assert client.delete("/admin/nodes/slave/accounts/pro/cooldowns").status_code == 200
+    assert client.delete("/admin/nodes/slave/accounts/pro").status_code == 200
+    # the slave's list after the refresh reflects the deletion
+    assert "pro" not in [a["id"] for a in node.accounts]
+
+
+# ---- Media: stored on the master only --------------------------------------------
+def test_media_retention_defaults(monkeypatch):
+    """Images and videos are kept for 90 days by default (was 24 h)."""
+    monkeypatch.delenv("GOP_IMAGE_KEEP_HOURS", raising=False)
+    monkeypatch.delenv("GOP_VIDEO_KEEP_HOURS", raising=False)
+    from gemini_webapi_proxy.config import Settings
+
+    s = Settings()
+    assert s.image_keep_hours == 90 * 24 and s.video_keep_hours == 90 * 24
+
+
+def _b64_png() -> str:
+    import base64
+
+    return base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
+
+
+def test_slave_gallery_keeps_no_copies(monkeypatch, tmp_path):
+    """Slave mode: images are stored on the master only, never here."""
+    from gemini_webapi_proxy.services import gallery
+    from gemini_webapi_proxy.stats import current
+
+    monkeypatch.setenv("GOP_MODE", "slave")
+    monkeypatch.setenv("GOP_DATA_DIR", str(tmp_path))
+    reset_settings_cache()
+    settings = get_settings()
+    token = current.set({"model": "gemini-flash", "account": "slave::free", "node": "slave"})
+    try:
+        assert gallery.save_to_gallery(settings, [_b64_png()], prompt="hi") == []
+        assert not gallery.gallery_dir(settings).exists()
+    finally:
+        current.reset(token)
+
+    monkeypatch.setenv("GOP_MODE", "master")
+    reset_settings_cache()
+    settings = get_settings()
+    token = current.set({"model": "gemini-flash", "account": "slave::free", "node": "slave"})
+    try:
+        saved = gallery.save_to_gallery(settings, [_b64_png()], prompt="hi")
+        assert saved, "master keeps the gallery copy"
+        entry = gallery.entries(settings)[0]
+        assert entry["node"] == "slave"  # attributed to the slave for its Media tab
+    finally:
+        current.reset(token)
+
+
+def test_node_job_delete_removes_the_slaves_copy(slave):
+    """The master fetched the mp4: DELETE /node/jobs/{id} drops file and job."""
+    from gemini_webapi_proxy.services import video
+
+    client, _ = slave
+    settings = get_settings()
+    job = video.VideoJob(id="video_x", model="gemini-flash", prompt="p")
+    job.status = "completed"
+    job.path = settings.data_dir / "videos" / "video_x.mp4"
+    job.path.parent.mkdir(parents=True, exist_ok=True)
+    job.path.write_bytes(b"mp4")
+    video._jobs[job.id] = job
+    assert client.delete("/node/jobs/video_x").status_code == 401  # token required
+    r = client.delete("/node/jobs/video_x", headers=NODE)
+    assert r.status_code == 200 and r.json()["ok"]
+    assert video.get_job("video_x") is None and not job.path.exists()
+    assert client.delete("/node/jobs/video_x", headers=NODE).status_code == 404
+
+
+async def test_remote_video_handoff_deletes_the_slave_copy(master, tmp_path):
+    """RemoteVideo.save fetches the mp4 and tells the slave to drop its copy."""
+    from gemini_webapi_proxy.client.nodes import Node, RemoteVideo
+
+    class FakeNodeClient:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+
+        @property
+        def node(self) -> Node:
+            return Node(id="slave", name="slave", url="http://x", token="t")
+
+        async def job(self, job_id: str) -> dict:
+            return {"status": "completed", "has_file": True}
+
+        async def job_content(self, job_id: str) -> bytes:
+            return b"mp4-bytes"
+
+        async def job_delete(self, job_id: str) -> dict:
+            self.deleted.append(job_id)
+            return {"ok": True}
+
+    http = FakeNodeClient()
+    await RemoteVideo(http, "video_x").save(path=str(tmp_path / "videos"), filename="job1")
+    assert (tmp_path / "videos" / "job1.mp4").read_bytes() == b"mp4-bytes"
+    assert http.deleted == ["video_x"]  # the master holds the only copy now

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased] — fork Muxee4ka/gemini-webapi-proxy
 
+### Changed
+- Media of a slave is stored on the master only: images arrive as base64 and go to
+  the master's gallery attributed to the slave (one tab per slave in the Media page);
+  after the master downloads a video the slave deletes its copy (`DELETE /node/jobs/{id}`,
+  one-hour fallback cleanup). Default retention is now 90 days for images and videos
+  (`GOP_IMAGE_KEEP_HOURS` / `GOP_VIDEO_KEEP_HOURS`, was 24 h)
+- Master/slave rebuilt around an explicit mode (`GOP_MODE=master|slave`, asked by the
+  installers via `--mode` / `-Mode` or interactively). A **slave** can no longer add or
+  change accounts itself (its admin API answers 403, the Telegram bot is read-only,
+  `/openai/v1` is not served) — every account configuration and status change is made
+  from the **master** over the link: new `/node/accounts*` API on the slave and
+  `/admin/nodes/{id}/accounts/…` forwarding on the master (create, rename, enable,
+  delete, cookies, check, reset limits, sign-in). Slave egress is enforced: proxies
+  (global and per-account) are ignored in slave mode, so account traffic can only
+  leave via the slave's own IP. Docs: docs/nodes.md
+
 ### Added
 - Telegram bot (admin UI → Telegram; `docs/telegram.md`): admins linked by a one-time
   link, `/status`, `/accounts` with enable/disable/reset/check buttons, `/stats`, `/events`;

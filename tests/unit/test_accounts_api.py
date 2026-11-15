@@ -11,6 +11,7 @@ from gemini_webapi.constants import AccountStatus
 from gemini_webapi_proxy.client import pool as pool_module
 from gemini_webapi_proxy.client.accounts import AccountStore
 from gemini_webapi_proxy.config import get_settings
+from gemini_webapi_proxy.services import account_ops
 
 
 class FakeClient:
@@ -45,6 +46,7 @@ def client(monkeypatch: pytest.MonkeyPatch):
     from gemini_webapi_proxy.routes import accounts
 
     monkeypatch.setattr(accounts, "pool", pool_module.pool)
+    monkeypatch.setattr(account_ops, "pool", pool_module.pool)
     from gemini_webapi_proxy.app import app
 
     with TestClient(app, base_url="https://testserver") as c:
@@ -77,7 +79,6 @@ def _signed_in(client: TestClient) -> TestClient:
 
 
 def test_add_sign_in_through_the_browser_and_list(client, monkeypatch):
-    from gemini_webapi_proxy.routes import accounts
 
     opened: list[str] = []
 
@@ -88,8 +89,8 @@ def test_add_sign_in_through_the_browser_and_list(client, monkeypatch):
     async def take_session(url, context=None):
         return {"__Secure-1PSID": "sid-pro", "__Secure-1PSIDTS": "ts"}, "pro@example.com"
 
-    monkeypatch.setattr(accounts, "open_sign_in", open_sign_in)
-    monkeypatch.setattr(accounts, "take_session", take_session)
+    monkeypatch.setattr(account_ops, "open_sign_in", open_sign_in)
+    monkeypatch.setattr(account_ops, "take_session", take_session)
     c = _signed_in(client)
 
     added = c.post("/admin/accounts", json={"name": "Pro"}).json()
@@ -116,12 +117,11 @@ def test_add_sign_in_through_the_browser_and_list(client, monkeypatch):
 
 
 def test_finish_before_signing_in_is_refused(client, monkeypatch):
-    from gemini_webapi_proxy.routes import accounts
 
     async def take_session(url, context=None):
         return {"NID": "n"}, None
 
-    monkeypatch.setattr(accounts, "take_session", take_session)
+    monkeypatch.setattr(account_ops, "take_session", take_session)
     c = _signed_in(client)
     assert c.post("/admin/accounts/default/login/finish").status_code == 400
 
@@ -145,12 +145,11 @@ def test_paste_cookies_patch_and_delete(client):
 
 
 def test_abandoned_sign_in_lapses(client, monkeypatch):
-    from gemini_webapi_proxy.routes import accounts
 
     async def open_sign_in(url, proxy=None):
         return "ctx1"
 
-    monkeypatch.setattr(accounts, "open_sign_in", open_sign_in)
+    monkeypatch.setattr(account_ops, "open_sign_in", open_sign_in)
     c = _signed_in(client)
     c.post("/admin/accounts", json={"name": "Pro"})
     assert c.post("/admin/accounts/default/login/start").status_code == 200
@@ -175,7 +174,7 @@ def test_proxy_is_set_checked_masked_and_used_for_sign_in(client, monkeypatch):
         return "ctx1"
 
     monkeypatch.setattr(accounts, "egress_check", egress_check)
-    monkeypatch.setattr(accounts, "open_sign_in", open_sign_in)
+    monkeypatch.setattr(account_ops, "open_sign_in", open_sign_in)
     c = _signed_in(client)
     assert c.post("/admin/accounts/default/proxy", json={"proxy": "ftp://x"}).status_code == 400
     r = c.post("/admin/accounts/default/proxy", json={"proxy": "http://127.0.0.1:8118"}).json()
