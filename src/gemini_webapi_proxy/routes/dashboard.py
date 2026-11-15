@@ -152,7 +152,13 @@ async def models() -> dict:
 async def videos() -> dict:
     return {
         "videos": [
-            {**j.to_openai(), "account": j.account, "key": j.key, "has_file": bool(j.path)}
+            {
+                **j.to_openai(),
+                "account": j.account,
+                "node": j.node,
+                "key": j.key,
+                "has_file": bool(j.path),
+            }
             for j in video.list_jobs()
         ]
     }

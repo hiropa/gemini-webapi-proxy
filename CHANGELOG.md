@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased] — fork Muxee4ka/gemini-webapi-proxy
 
 ### Changed
+- Media of a slave is stored on the master only: images arrive as base64 and go to
+  the master's gallery attributed to the slave (one tab per slave in the Media page);
+  after the master downloads a video the slave deletes its copy (`DELETE /node/jobs/{id}`,
+  one-hour fallback cleanup). Default retention is now 90 days for images and videos
+  (`GOP_IMAGE_KEEP_HOURS` / `GOP_VIDEO_KEEP_HOURS`, was 24 h)
 - Master/slave rebuilt around an explicit mode (`GOP_MODE=master|slave`, asked by the
   installers via `--mode` / `-Mode` or interactively). A **slave** can no longer add or
   change accounts itself (its admin API answers 403, the Telegram bot is read-only,

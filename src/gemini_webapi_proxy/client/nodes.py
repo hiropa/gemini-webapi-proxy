@@ -299,6 +299,10 @@ class NodeClient:
             raise NodeError(resp.status_code, "error", resp.text[:300])
         return resp.content
 
+    async def job_delete(self, job_id: str) -> dict:
+        """Tell the slave the mp4 was fetched: it keeps no copy (docs/nodes.md)."""
+        return await self._call("DELETE", f"/node/jobs/{job_id}")
+
 
 # ---- The remote "Gemini client": forwards generate_content to the slave -------
 class RemoteModel:
@@ -336,6 +340,11 @@ class RemoteVideo:
         out.mkdir(parents=True, exist_ok=True)
         target = out / f"{filename}.mp4"
         target.write_bytes(data)
+        # The master now holds the only copy; the slave deletes its file.
+        try:
+            await self.http.job_delete(self.job_id)
+        except Exception as exc:  # best effort: the slave's cleanup is the fallback
+            log.warning("node %s: video handoff delete failed: %s", self.http.node.id, exc)
         return {"video": str(target)}
 
 

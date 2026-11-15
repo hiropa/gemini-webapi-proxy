@@ -47,6 +47,21 @@ client ──► master :4982 ──/node/* (Bearer node token, https)──► 
   jobs run on the slave and the mp4 is downloaded to the master via
   `/node/jobs/{id}/content`.
 
+## Media: stored on the master only
+
+Everything a slave generates is forwarded to the master over the link and stored
+**only there** — a slave keeps no copies:
+
+- **Images** arrive as base64 in the generate response; the master saves them into
+  its gallery (`GOP_IMAGE_KEEP_HOURS`, 90 days by default) with the slave's name in
+  the entry (`node`), so the admin UI's **Media** page shows one tab per slave next
+  to "This machine". On the slave itself the gallery is a no-op.
+- **Videos** run as a job on the slave; the master downloads the mp4 via
+  `GET /node/jobs/{id}/content` and then calls `DELETE /node/jobs/{id}`, which
+  deletes the slave's file and job record immediately. (If a download never
+  happens — the master died mid-handoff — the slave drops the file after an hour
+  as a fallback.) The master's Media page lists the video under its slave's tab.
+
 ## Egress: a slave's traffic leaves via the slave's IP — only
 
 This is enforced, not just encouraged:
@@ -106,6 +121,7 @@ Slave, all under `Authorization: Bearer <node token>`:
 | `POST /node/generate` | `{account, model, prompt, images[], mode: chat\|image\|video, seconds?, size?}` → `{text, images:[{b64}], job?, status?}`; errors: 429 `quota`/`unavailable`, 401 `auth`, 403 `refused`, 404 `no_account` |
 | `GET /node/jobs/{id}` | video job status (`has_file` when done) |
 | `GET /node/jobs/{id}/content` | the mp4 |
+| `DELETE /node/jobs/{id}` | the master fetched the mp4: delete the slave's copy and job |
 
 Master, admin session / API key:
 

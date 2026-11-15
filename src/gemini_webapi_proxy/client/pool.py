@@ -44,7 +44,7 @@ from gemini_webapi_proxy.downloaders.image_export import sanitize_gemini_client_
 from gemini_webapi_proxy.egress import egress
 from gemini_webapi_proxy.errors import NoAccountError, QuotaExceededError
 from gemini_webapi_proxy.events import emit
-from gemini_webapi_proxy.stats import journal, note_account
+from gemini_webapi_proxy.stats import journal, note, note_account
 
 logger = logging.getLogger(__name__)
 curl_compat.install()
@@ -572,6 +572,10 @@ class AccountPool:
             slot = lease.slot
             tried.add(slot.id)
             note_account(slot.id)
+            if slot.is_remote:
+                # Media of a remote generation is stored here, attributed to its
+                # slave (the slave itself keeps no copies).
+                note(node=slot.node.name)
             slot.requests += 1
             slot.last_used = time.time()
             try:

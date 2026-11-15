@@ -3,6 +3,9 @@
 Clients get images as base64 and the proxy keeps nothing by default; the gallery
 holds a copy for ``GOP_IMAGE_KEEP_HOURS`` (at most ``GOP_IMAGE_KEEP_MAX`` files)
 with the prompt next to it, so a generation can be looked at afterwards.
+
+A slave keeps no copies: its media is forwarded to the master over the link and
+stored only there, attributed to the slave (``node`` in the entry metadata).
 """
 
 from __future__ import annotations
@@ -35,6 +38,8 @@ def _ext(data: bytes) -> str:
 def save_to_gallery(settings: Settings, images: list[str], *, prompt: str) -> list[str]:
     """Keep a copy of the images; returns their gallery names."""
     saved: list[str] = []
+    if settings.is_slave:
+        return saved  # a slave's media is stored on its master, not here
     if settings.image_keep_hours <= 0 or not images:
         return saved
     folder = gallery_dir(settings)
@@ -47,6 +52,7 @@ def save_to_gallery(settings: Settings, images: list[str], *, prompt: str) -> li
             "model": record.get("model"),
             "account": record.get("account"),
             "key": record.get("key"),
+            "node": record.get("node"),  # set for a remote account: its slave's name
         }
         for b64 in images:
             data = base64.b64decode(b64)

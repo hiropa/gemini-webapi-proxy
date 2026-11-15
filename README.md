@@ -368,7 +368,7 @@ are kept as legacy aliases for compatibility.
 | `GOP_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
 | `GOP_DATA_DIR` | `./data` | model registry, generated videos |
 | `GOP_VIDEO_TIMEOUT` | `900` | seconds for one background video job |
-| `GOP_VIDEO_KEEP_HOURS` | `24` | how long finished videos are kept |
+| `GOP_VIDEO_KEEP_HOURS` | `2160` | how long finished videos are kept (90 days; a slave hands its videos to the master and keeps no copies) |
 | `GEMINI_COOKIE_PATH` | _(temp dir)_ | where `gemini-webapi` caches rotated cookies; keep it in a volume |
 
 See [docs/configuration.md](docs/configuration.md) for the full list and

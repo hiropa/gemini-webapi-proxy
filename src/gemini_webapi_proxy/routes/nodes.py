@@ -280,6 +280,14 @@ async def node_job_content(job_id: str):
     return FileResponse(job.path, media_type="video/mp4", filename=f"{job.id}.mp4")
 
 
+@router.delete("/jobs/{job_id}", dependencies=[Depends(require_node_token)])
+async def node_job_delete(job_id: str) -> dict:
+    """The master fetched the mp4: the slave keeps no copy (see docs/nodes.md)."""
+    if not video.delete_job(job_id):
+        raise HTTPException(status_code=404, detail=f"video {job_id} not found")
+    return {"ok": True}
+
+
 # ---- Master side: manage linked slaves -----------------------------------------
 @admin_router.get("/nodes")
 async def list_nodes() -> dict:

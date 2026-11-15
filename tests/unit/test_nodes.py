@@ -562,3 +562,96 @@ async def test_master_manages_slave_accounts(master):
     assert client.delete("/admin/nodes/slave/accounts/pro").status_code == 200
     # the slave's list after the refresh reflects the deletion
     assert "pro" not in [a["id"] for a in node.accounts]
+
+
+# ---- Media: stored on the master only --------------------------------------------
+def test_media_retention_defaults(monkeypatch):
+    """Images and videos are kept for 90 days by default (was 24 h)."""
+    monkeypatch.delenv("GOP_IMAGE_KEEP_HOURS", raising=False)
+    monkeypatch.delenv("GOP_VIDEO_KEEP_HOURS", raising=False)
+    from gemini_webapi_proxy.config import Settings
+
+    s = Settings()
+    assert s.image_keep_hours == 90 * 24 and s.video_keep_hours == 90 * 24
+
+
+def _b64_png() -> str:
+    import base64
+
+    return base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
+
+
+def test_slave_gallery_keeps_no_copies(monkeypatch, tmp_path):
+    """Slave mode: images are stored on the master only, never here."""
+    from gemini_webapi_proxy.services import gallery
+    from gemini_webapi_proxy.stats import current
+
+    monkeypatch.setenv("GOP_MODE", "slave")
+    monkeypatch.setenv("GOP_DATA_DIR", str(tmp_path))
+    reset_settings_cache()
+    settings = get_settings()
+    token = current.set({"model": "gemini-flash", "account": "slave::free", "node": "slave"})
+    try:
+        assert gallery.save_to_gallery(settings, [_b64_png()], prompt="hi") == []
+        assert not gallery.gallery_dir(settings).exists()
+    finally:
+        current.reset(token)
+
+    monkeypatch.setenv("GOP_MODE", "master")
+    reset_settings_cache()
+    settings = get_settings()
+    token = current.set({"model": "gemini-flash", "account": "slave::free", "node": "slave"})
+    try:
+        saved = gallery.save_to_gallery(settings, [_b64_png()], prompt="hi")
+        assert saved, "master keeps the gallery copy"
+        entry = gallery.entries(settings)[0]
+        assert entry["node"] == "slave"  # attributed to the slave for its Media tab
+    finally:
+        current.reset(token)
+
+
+def test_node_job_delete_removes_the_slaves_copy(slave):
+    """The master fetched the mp4: DELETE /node/jobs/{id} drops file and job."""
+    from gemini_webapi_proxy.services import video
+
+    client, _ = slave
+    settings = get_settings()
+    job = video.VideoJob(id="video_x", model="gemini-flash", prompt="p")
+    job.status = "completed"
+    job.path = settings.data_dir / "videos" / "video_x.mp4"
+    job.path.parent.mkdir(parents=True, exist_ok=True)
+    job.path.write_bytes(b"mp4")
+    video._jobs[job.id] = job
+    assert client.delete("/node/jobs/video_x").status_code == 401  # token required
+    r = client.delete("/node/jobs/video_x", headers=NODE)
+    assert r.status_code == 200 and r.json()["ok"]
+    assert video.get_job("video_x") is None and not job.path.exists()
+    assert client.delete("/node/jobs/video_x", headers=NODE).status_code == 404
+
+
+async def test_remote_video_handoff_deletes_the_slave_copy(master, tmp_path):
+    """RemoteVideo.save fetches the mp4 and tells the slave to drop its copy."""
+    from gemini_webapi_proxy.client.nodes import Node, RemoteVideo
+
+    class FakeNodeClient:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+
+        @property
+        def node(self) -> Node:
+            return Node(id="slave", name="slave", url="http://x", token="t")
+
+        async def job(self, job_id: str) -> dict:
+            return {"status": "completed", "has_file": True}
+
+        async def job_content(self, job_id: str) -> bytes:
+            return b"mp4-bytes"
+
+        async def job_delete(self, job_id: str) -> dict:
+            self.deleted.append(job_id)
+            return {"ok": True}
+
+    http = FakeNodeClient()
+    await RemoteVideo(http, "video_x").save(path=str(tmp_path / "videos"), filename="job1")
+    assert (tmp_path / "videos" / "job1.mp4").read_bytes() == b"mp4-bytes"
+    assert http.deleted == ["video_x"]  # the master holds the only copy now
